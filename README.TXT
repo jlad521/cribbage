@@ -21,3 +21,6 @@ In order to run the testing suite, you have to make minor modifications to 2 fil
     3. Now simply type make and ./play to see the testing suit execute
 
 Enjoy :D
+
+winning
+
