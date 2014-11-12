@@ -10,6 +10,7 @@
 #include <iostream>
 #include <sys/ioctl.h>
 #include <cstdio>
+#include <sys/ioctl.h>
 #include <unistd.h>
 #include <locale.h>
 #include <ncursesw/ncurses.h>
@@ -161,7 +162,7 @@ void display::displayCard(int x, int y, int suit, int number, int printAtt) {
 
 	// Ncurses drawing settings
 	attron(COLOR_PAIR(1) | printAtt);
-	// prevent draw if it off te screen
+	// prevent draw if it off the screen
 	if (x>=0 && y>=0 && x<cols-6 && y<lines-lineBoundaryOffset) {
 		// print the top lines of the card
 		mvprintw(y,x,"\u250c\u2500\u2500\u2500\u2500\u2510");

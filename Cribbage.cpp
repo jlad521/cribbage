@@ -1,9 +1,7 @@
 #include "Cribbage.h"
-//#include "display.h"
 #include "Deck.h"
 #include "Player.h"
 #include "ShowCribbage.h"
-//#include "Deck.h"
 #include <iostream>
 #include <string>
 #include <time.h>
@@ -20,6 +18,7 @@ void Cribbage::playGame(){
     //Ask player to input name?
     Player * human = new Player(true, "Jesus");
     Player * AI = new Player(false, "ROBOT");
+    /*
     ShowCribbage * display = new ShowCribbage();
     Player* players[2];
     players[0] = human;
@@ -37,6 +36,7 @@ void Cribbage::playGame(){
     delete human;
     delete AI;
     delete display;
+    */
 }
 
 void Cribbage::playRound(Player* players[] , ShowCribbage* display) {
@@ -48,6 +48,7 @@ void Cribbage::playRound(Player* players[] , ShowCribbage* display) {
     display->drawCards(players, cut, 1, 0, false, crib, dealerPos, 0, 0);
     int gophase = 0;
     int selected;
+
     /*Discard 1st human card */
     selected = display->getCard(players[0], 1, gophase); //getCard only allows a valid card to be played (play game to see)
     crib.push_back(players[0]->hand.at(selected)); //add discarded cards to crib
