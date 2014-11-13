@@ -111,6 +111,23 @@ class sampleRandMethod : public xmlrpc_c::method {
             }
 };
 
+class getGameInfo : public xmlrpc_c::method2 {
+    public:
+        getGameInfo () {
+            //initialize signature/help?
+        }
+        typedef std::map<
+        void
+            execute(xmlrpc_c::paramList const& paramList,
+                    //const xmlrpc_c::callInfo * const callInfoP,
+                    xmlrpc_c::value_struct* returnP) {
+                int k = 5;
+                *returnP->add(xmlrpc_c::value_int(k));
+                //*returnP = xmlrpc_c::value_int(k);
+                //method here
+            }
+};
+
 int
 main(int           const,
         const char ** const) {
@@ -119,6 +136,10 @@ main(int           const,
         xmlrpc_c::registry myRegistry;
         xmlrpc_c::methodPtr const sampleRandMethodP(new sampleRandMethod);
         myRegistry.addMethod("sample.rand", sampleRandMethodP);
+
+        /* Now add my Method */
+        xmlrpc_c::methodPtr const getGameInfoP(new getGameInfo);
+        myRegistry.addMethod("game.info", getGameInfoP);
 
         xmlrpc_c::serverAbyss myAbyssServer(
                 xmlrpc_c::serverAbyss::constrOpt()

@@ -18,8 +18,8 @@ void Cribbage::playGame(){
     //Ask player to input name?
     Player * human = new Player(true, "Jesus");
     Player * AI = new Player(false, "ROBOT");
+    //ShowCribbage * display = new ShowCribbage();
     /*
-    ShowCribbage * display = new ShowCribbage();
     Player* players[2];
     players[0] = human;
     players[1] = AI;
@@ -45,6 +45,7 @@ void Cribbage::playRound(Player* players[] , ShowCribbage* display) {
     players[0]->hand = deck->dealCards();
     players[1]->hand = deck->dealCards();
     Card* cut = new Card();
+    //Call
     display->drawCards(players, cut, 1, 0, false, crib, dealerPos, 0, 0);
     int gophase = 0;
     int selected;
