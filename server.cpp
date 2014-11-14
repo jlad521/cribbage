@@ -197,7 +197,13 @@ class makeGame : public xmlrpc_c::method {
                     sqlite3_free(zErrMsg);
                 }else{
                     fprintf(stdout, "Table created successfully\n");
+
                 }
+
+
+
+
+
                 //HOW TO INSERT PLAYER1 IN SECOND ROW???
                 //I could just read the dB from client to return this info...
                 sql = "INSERT INTO GAME () "  \
