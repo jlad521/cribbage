@@ -10,9 +10,10 @@
 #include "xmlrpc-c/base.hpp"
 #include "xmlrpc-c/registry.hpp"
 #include "xmlrpc-c/server_abyss.hpp"
-#include "Cribbage.h"
-
-
+//#include "Cribbage.h"
+#include "Deck.h"
+#include <string>
+#include "Player.h"
 using namespace std;
 
 static int callback(void *NotUsed, int argc, char **argv, char **azColName){
@@ -110,36 +111,94 @@ class sampleRandMethod : public xmlrpc_c::method {
                 *retvalP = xmlrpc_c::value_int(random);
             }
 };
-
-class getGameInfo : public xmlrpc_c::method2 {
+class getPlayerInfo : public xmlrpc_c::method {
     public:
-        getGameInfo () {
+        getPlayerInfo () {
             //initialize signature/help?
         }
-        typedef std::map<
         void
             execute(xmlrpc_c::paramList const& paramList,
                     //const xmlrpc_c::callInfo * const callInfoP,
-                    xmlrpc_c::value_struct* returnP) {
+                    xmlrpc_c::value* returnP) {
+                Player* AI = new Player(false, "ROBOT");
+                Player* human = new Player(true, "Jesus");
+                sqlite3 *db;
+                char *zErrMsg = 0;
+                int rc;
+                const char* sql;
+                const char* data = "Callback function called";
+                rc = sqlite3_open("test.db", &db);
+                if( rc ){
+                    fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+                    exit(0);
+                }else{
+                    fprintf(stderr, "Opened database successfully\n");
+                    sql = "CREATE TABLE PLAYERS("  \
+                           "ID INT PRIMARY KEY     NOT NULL," \
+                           "position INT, points INT, isHuman INT, name VARCHAR(50), lastPlayed INT);"; //NEED TO ADD SCOREHAND AND HAND
+                }
+                rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+                if( rc != SQLITE_OK ){
+                    fprintf(stderr, "SQL error: %s\n", zErrMsg);
+                    sqlite3_free(zErrMsg);
+                }else{
+                    fprintf(stdout, "Table created successfully\n");
+                }
+                //HOW TO INSERT PLAYER1 IN SECOND ROW???
+                //I could just read the dB from client to return this info...
+                sql = "INSERT INTO PLAYERS (position, points, isHuman, name, lastPlayed) "  \
+                //USE SERIALIZE FUNCTION IN VALUES COMMAND
+                       "VALUES (1, 'field1=position;field2=points;field3=isHuman;field4=name;field5=lastPlayed');";
+
+                rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+                if( rc != SQLITE_OK ){
+                    fprintf(stderr, "SQL error: %s\n", zErrMsg);
+                    sqlite3_free(zErrMsg);
+                }else{
+                    fprintf(stdout, "Records created successfully\n");
+                }
+
+
                 int k = 5;
-                *returnP->add(xmlrpc_c::value_int(k));
+                vector<xmlrpc_c::value> array;
+                array.push_back(xmlrpc_c::value_int(5));
+                Deck* deck = new Deck();
+                *returnP = xmlrpc_c::value_int(5);
+                //*returnP = &array;
+                //xmlrpc_c::value *returnP(array);
+                //*returnP->push_back(xmlrpc_c::value_int(k));
                 //*returnP = xmlrpc_c::value_int(k);
-                //method here
             }
+};
+
+
+class phaseI : public xmlrpc_c::method2 {
+    public:
+        phaseI(){}
+        void
+            execute(xmlrpc_c::paramList const& paramList,
+                    xmlrpc_c::value* returnP) {
+            Deck * deck = new Deck();
+            vector<Card*> aiHand;
+            aiHand = deck->dealCards();
+
+            }
+
 };
 
 int
 main(int           const,
         const char ** const) {
-    Cribbage * game = new Cribbage();
+    //Cribbage * game = new Cribbage();
+    Deck * deck = new Deck();
+    Card* c = new Card();
     try {
         xmlrpc_c::registry myRegistry;
         xmlrpc_c::methodPtr const sampleRandMethodP(new sampleRandMethod);
         myRegistry.addMethod("sample.rand", sampleRandMethodP);
-
         /* Now add my Method */
-        xmlrpc_c::methodPtr const getGameInfoP(new getGameInfo);
-        myRegistry.addMethod("game.info", getGameInfoP);
+        xmlrpc_c::methodPtr const getPlayerInfoP(new getPlayerInfo);
+        myRegistry.addMethod("define_players", getPlayerInfoP);
 
         xmlrpc_c::serverAbyss myAbyssServer(
                 xmlrpc_c::serverAbyss::constrOpt()
