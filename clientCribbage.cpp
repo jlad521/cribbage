@@ -9,43 +9,18 @@
 #include <sstream>
 #include "display.h"
 #include <unistd.h>
-#include "Cribbage.h"
+#include "clientCribbage.h"
 using namespace std;
 
-/* No Header file for this example driver artifact
- * function declaration here instead.
- */
-// Signal Subroutine for Window Resize
-static void detectResize (int sig);
-// stub artifact for what the game does when the screen resizes
-void stub_PrintResize(void);
+clientCribbage::clientCribbage(){
 
-// The gameDisplay object is global, because the static signal handler object
-// needs to access the dynamic object.
+}
+
 display gameDisplay;
+//CRIBBAGE GAME ON CLIENT:
 
-/*
- * This is the main function that starts the driver artifact.
- * This function demonstrates some of the abilities of the Display class
- */
 int main(int argc, char* argv[])
 {
-    char key;
-    int cardX = 0;
-    int cardY = 0;
-    int suit = 0;
-    int number = 0;
-    int dragX = 0;
-    int dragY = 0;
-
-	// using a stringstream rather than a string to make making the banner easier
-	stringstream messageString;
-    //Cribbage* game = new Cribbage();
-
-	// enable a interrupt triggered on a window resize
-	signal(SIGWINCH, detectResize); // enable the window resize signal
-
-
   try {
         string const serverUrl("http://localhost:8080/RPC2");
         string const methodName("sample.rand");
@@ -95,32 +70,3 @@ int main(int argc, char* argv[])
 
 	return 0;
 }
-
-/*
- * This is the interrupt service routine called when the resize screen
- * signal is captured.
- */
-void detectResize(int sig) {
-	// update the display class information with the new window size
-    gameDisplay.handleResize(sig);
-	// re-enable the interrupt for a window resize
-    signal(SIGWINCH, detectResize);
-	/*INSERT YOUR OWN SCREEN UPDATE CODE instead of stub_PrintResize*/
-	stub_PrintResize();
-}
-
-/*
- * This is a simple stub that should be replaced with what the game does
- * when the screen resizes.
- */
-void stub_PrintResize(void) {
-	// gets the new screen size
-	int cols = gameDisplay.getCols();
-	int lines = gameDisplay.getLines();
-	// setups a message stream
-	stringstream messageString;
-	messageString << "Terminal is " << cols << "x" << lines;
-	// prints out the information of the new screen size in a top banner
-	gameDisplay.bannerTop(messageString.str());
-}
-

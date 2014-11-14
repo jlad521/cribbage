@@ -162,7 +162,56 @@ class getPlayerInfo : public xmlrpc_c::method {
                 int k = 5;
                 vector<xmlrpc_c::value> array;
                 array.push_back(xmlrpc_c::value_int(5));
-                Deck* deck = new Deck();
+                *returnP = xmlrpc_c::value_int(5);
+                //*returnP = &array;
+                //xmlrpc_c::value *returnP(array);
+                //*returnP->push_back(xmlrpc_c::value_int(k));
+                //*returnP = xmlrpc_c::value_int(k);
+            }
+};
+//SHOULD TEST PLAYERS FIRST, BEFORE WRITING THIS
+class makeGame : public xmlrpc_c::method {
+    public:
+        makeGame(){}
+        void
+            execute(xmlrpc_c::paramList const& paramList,
+                    xmlrpc_c::value* returnP) {
+                sqlite3 *db;
+                char *zErrMsg = 0;
+                int rc;
+                const char* sql;
+                const char* data = "Callback function called";
+                rc = sqlite3_open("test.db", &db);
+                if( rc ){
+                    fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+                    exit(0);
+                }else{
+                    fprintf(stderr, "Opened database successfully\n");
+                    sql = "CREATE TABLE GAME("  \
+                           "ID INT PRIMARY KEY     NOT NULL," \
+                           "position INT, points INT, isHuman INT, name VARCHAR(50), lastPlayed INT);"; //NEED TO ADD SCOREHAND AND HAND
+                }
+                rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+                if( rc != SQLITE_OK ){
+                    fprintf(stderr, "SQL error: %s\n", zErrMsg);
+                    sqlite3_free(zErrMsg);
+                }else{
+                    fprintf(stdout, "Table created successfully\n");
+                }
+                //HOW TO INSERT PLAYER1 IN SECOND ROW???
+                //I could just read the dB from client to return this info...
+                sql = "INSERT INTO GAME () "  \
+                //USE SERIALIZE FUNCTION IN VALUES COMMAND
+                       "VALUES (1, serialize);";
+
+                rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+                if( rc != SQLITE_OK ){
+                    fprintf(stderr, "SQL error: %s\n", zErrMsg);
+                    sqlite3_free(zErrMsg);
+                }else{
+                    fprintf(stdout, "Records created successfully\n");
+                }
+
                 *returnP = xmlrpc_c::value_int(5);
                 //*returnP = &array;
                 //xmlrpc_c::value *returnP(array);
@@ -171,16 +220,21 @@ class getPlayerInfo : public xmlrpc_c::method {
             }
 };
 
-
-class phaseI : public xmlrpc_c::method2 {
+class phaseI : public xmlrpc_c::method {
     public:
         phaseI(){}
         void
             execute(xmlrpc_c::paramList const& paramList,
                     xmlrpc_c::value* returnP) {
             Deck * deck = new Deck();
+            Card * cut;
             vector<Card*> aiHand;
             aiHand = deck->dealCards();
+            vector<Card*> humanHand;
+            humanHand = deck->dealCards();
+            cut = deck->cutDeck();
+            //now have to write to dB
+            //--> need to create hands table
 
             }
 
