@@ -1,0 +1,8 @@
+DIR=`pwd`
+
+g++ -c -I. -I$DIR/include -I$DIR/include server.cpp
+g++ -o server server.o  $DIR/lib/libxmlrpc_server_abyss++.a $DIR/lib/libxmlrpc_server++.a $DIR/lib/libxmlrpc_server_abyss.a $DIR/lib/libxmlrpc_server.a $DIR/lib/libxmlrpc_abyss.a  -lpthread $DIR/lib/libxmlrpc++.a $DIR/lib/libxmlrpc.a $DIR/lib/libxmlrpc_util.a $DIR/lib/libxmlrpc_xmlparse.a $DIR/lib/libxmlrpc_xmltok.a -lsqlite3
+
+g++ -g -c -I. -I$DIR/include -I$DIR/include client.cpp -o client.o
+g++ -g -c -I. -I$DIR/include -I$DIR/include display.cpp -o display.o
+g++ -g client.o display.o $DIR/lib/libxmlrpc_client++.a $DIR/lib/libxmlrpc_client.a $DIR/lib/libxmlrpc++.a $DIR/lib/libxmlrpc.a $DIR/lib/libxmlrpc_util.a $DIR/lib/libxmlrpc_xmlparse.a $DIR/lib/libxmlrpc_xmltok.a  -L/usr/lib/i386-linux-gnu -lcurl $DIR/lib/libxmlrpc_packetsocket.a -lncursesw -o client

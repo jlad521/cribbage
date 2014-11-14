@@ -2,14 +2,15 @@
  * Author: John Shield
  * Description: Defines the functionality of the user interface.
  *
- * NOTES: 
+ * NOTES:
  *		* Requires the terminal (Putty) to be set to UTF-8.
  *		* Does not function when running a screen session.
  */
 
-/*#include <iostream>*/
+#include <iostream>
 #include <sys/ioctl.h>
-/*#include <cstdio>*/
+#include <cstdio>
+#include <sys/ioctl.h>
 #include <unistd.h>
 #include <locale.h>
 #include <ncursesw/ncurses.h>
@@ -34,16 +35,16 @@ display::display(void) {
 	clear();
 	// turn off the keyboard echo (reqiured while drawing)
 	noecho();
-	// Change to character mode (so individual characters are being read at a 
+	// Change to character mode (so individual characters are being read at a
 	// time rather than waiting for a carriage return).
-	cbreak(); 
-	// Allows for function keys to be used (also nessacary for getting the mouse 
-	// movement working).	
+	cbreak();
+	// Allows for function keys to be used (also nessacary for getting the mouse
+	// movement working).
 	keypad(stdscr, TRUE);
-	// set which mouse events are captured 
-	mousemask(ALL_MOUSE_EVENTS, NULL); 
-	// Setting the timeout for the capture input values are in 1/10ths of a second.	
-	halfdelay(5); 
+	// set which mouse events are captured
+	mousemask(ALL_MOUSE_EVENTS, NULL);
+	// Setting the timeout for the capture input values are in 1/10ths of a second.
+	halfdelay(5);
 
 	// setup the screen size settings.
 	cols = 80;
@@ -67,14 +68,14 @@ display::display(void) {
  */
 display::~display() {
 	// this is turns off all the special settings and returns the terminal to normal
-	endwin(); 
+	endwin();
 	// insert deletion of dynamically created objects here too
 }
 
 /*
  * Function: This captures all the userinput.
  * Description: It captures mouse and keyboard events.
- * 		Returns "Positive Number" 
+ * 		Returns "Positive Number"
  *			- for user keypress
  *			- this is a character code typed
  * 		Returns "0" - for no user input
@@ -84,9 +85,9 @@ display::~display() {
  *			- details of the mouse event must be fetched from this class
  *			- use getMouseEventX, getMouseEventY and getMouseEventButton
  */
-int display::captureInput(void) {	
+int display::captureInput(void) {
 	// obtain one mouse event or keypress
-	int ch=getch(); 
+	int ch=getch();
     // this is a switch statement for the result of getch
 	switch (ch) {
     case KEY_MOUSE: // this occurs when an mouse event occurs
@@ -138,7 +139,7 @@ void display::handleResize(int sig) {
  * Function: Displays various cards on the game screen
  * Description: This function displays various playing cards on the screen.
  *		The first two arguments are the x and y coordinates of the top left corner
- * 		of the card. 
+ * 		of the card.
  *			The suit values are: 1=spades, 2=hearts, 3=clubs, 4=diamonds
  * 			The numbers are: 1=Ace, 2-10=2-10, 11=Jack, 12=Queen, 13=King, 14=Joker
  *		Any suit and number that do not match the valid numberrs generates a face down
@@ -155,7 +156,7 @@ void display::handleResize(int sig) {
  *				A_INVIS         Invisible or blank mode
  *				A_ALTCHARSET    Alternate character set
  *				A_CHARTEXT      Bit-mask to extract a character
- *				COLOR_PAIR(n)   Color-pair number n 
+ *				COLOR_PAIR(n)   Color-pair number n
  */
 void display::displayCard(int x, int y, int suit, int number, int printAtt) {
 
@@ -178,7 +179,7 @@ void display::displayCard(int x, int y, int suit, int number, int printAtt) {
 			move(y+3,x); // move command
 			printFace(suit,number,2, printAtt); // call function to print card face
 		}
-		if (y<lines-4-lineBoundaryOffset) { 
+		if (y<lines-4-lineBoundaryOffset) {
 			// prints the bottom lines of the card
 			mvprintw(y+4,x,"\u2514\u2500\u2500\u2500\u2500\u2518");
 		}
@@ -192,7 +193,7 @@ void display::displayCard(int x, int y, int suit, int number, int printAtt) {
  * Description: This copies suit, number and printAtt from the calling function.
  *		Also includes what line of the card face is being drawn.
  */
-void display::printFace(int suit, int number, int line, int printAtt) {	
+void display::printFace(int suit, int number, int line, int printAtt) {
 	// draw left edge of the card
 	printw("\u2502");
 
@@ -217,7 +218,7 @@ void display::printFace(int suit, int number, int line, int printAtt) {
 			printNumber(number); // function to draw number
 			if (number!=10)
 				printw(" ");
-			printw(" ");	
+			printw(" ");
 		} else if (line==2) {
 			if (number!=10)
                 printw(" ");
@@ -248,7 +249,7 @@ void display::printFace(int suit, int number, int line, int printAtt) {
 
 /*
  * Function: Print the suit of the card
- * Description: This is just a look up table. 
+ * Description: This is just a look up table.
  */
 void display::printSuit(int suit) {
 	switch (suit) {
@@ -332,7 +333,7 @@ void display::eraseBox(int x, int y, int sizeX, int sizeY) {
 		strDraw = "";
 		// check that x is not off the screen
 		if (x<=cols && x >= 0) {
-			// make a string needed for box width	
+			// make a string needed for box width
 			strDraw.append(maxSizeX,' ');
 			// print the line of the box
 			mvprintw(y+yCount,x,"%s",strDraw.c_str());
@@ -352,7 +353,7 @@ void display::drawBox(int x, int y, int sizeX, int sizeY, int printAtt) {
     int yCount;
 
 	// set the box setting colors on
-	attron(COLOR_PAIR(5) | printAtt);    
+	attron(COLOR_PAIR(5) | printAtt);
 
 	// for the box height being drawn loop
     for (yCount=0; yCount<sizeY;yCount++) {
