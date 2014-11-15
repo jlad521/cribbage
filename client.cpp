@@ -19,12 +19,12 @@
 //#include "client.h"
 class clientConnection{
     private:
-        xmlrpc_c::clientSimple myClient;// = new(xmlrpc_c::clientSimple);
         static bool instanceFlag;
         static clientConnection* an_instance;
         clientConnection(){};
     public:
         vector<int> phaseI();
+        void tellDiscard(int, int, int);
         static clientConnection* createInstance();
         ~clientConnection() { instanceFlag = false;}
 };
@@ -41,17 +41,17 @@ clientConnection* clientConnection::createInstance(){
 }
 //Have it return ints for now, but will eventually return vector<Card*>
 vector<int> clientConnection::phaseI(){
-    xmlrpc_c::value result;
-        vector<int> cards;
+    vector<int> cards;
     try{
+        xmlrpc_c::clientSimple myClient;// = new(xmlrpc_c::clientSimple);
+        xmlrpc_c::value result;
         string const serverUrl("http://localhost:8080/RPC2");
         string const phaseI("server.phaseI");
         myClient.call(serverUrl, phaseI, &result);
         xmlrpc_c::value_array dealtHand(result);
         vector<xmlrpc_c::value> const hand(dealtHand.vectorValueValue());
         for(int i = 0; i < 6; i++){
-//MIGHT HAVE TO STORE AS CONST INT FIRST:   int const val1 = xmlrpc_c::value_int(hand.at(i));
-        cards.push_back(xmlrpc_c::value_int(hand.at(i)));
+            cards.push_back(xmlrpc_c::value_int(hand.at(i)));
         }
         return cards;
     } catch (exception const& e) {
@@ -62,17 +62,70 @@ vector<int> clientConnection::phaseI(){
         sleep(6000);
     }
 }
+void clientConnection::tellDiscard(int pIndex, int cIndex, int cardNum){
+    try{
+        xmlrpc_c::clientSimple myClient;// = new(xmlrpc_c::clientSimple);
+        xmlrpc_c::value nothing;
+        string const serverUrl("http://localhost:8080/RPC2");
+        string const tellDiscard("tellDiscard");
+        myClient.call(serverUrl, tellDiscard, "iii", &nothing, pIndex, cIndex, cardNum);
+    } catch (exception const& e) {
+        cerr << "Client threw error: " << e.what() << endl;
+        sleep(6000);
+    } catch (...) {
+        cerr << "Client threw unexpected error." << endl;
+        sleep(6000);
+    }
+}
 
 
-//string const serverUrl("http://localhost:8080/RPC2");
-//string const phaseI("server.phaseI");
-//string const definePlayers("define_players");
-using namespace std;
+/**********************************************************************************************/
 
 vector<Card*> crib;
-int dealerPos, pTurn; // I'm sure there'll be more
-    clientConnection *myClient;
+int dealerPos, pTurn, phase; // I'm sure there'll be more
+clientConnection *myClient;
+Player* players[2];
 
+vector<int> cardsToInts(vector<Card*> hand){
+    vector<int> convertedHand;
+    for(int i = 0; i < hand.size(); i++){
+        convertedHand.push_back((hand.at(i)->getSuit()-1)*13 + hand.at(i)->getPriority());
+    }
+    return convertedHand;
+}
+
+int cardToInt(Card* card){
+    return (card->getSuit() - 1) * 13 + card->getPriority();
+}
+vector<Card*> intsToCards(vector<int> hand){
+    vector<Card*> convertedHand;
+    int temp, priority, suit, value;
+    for(int i = 0; i < hand.size(); i++){
+        temp = hand.at(i);
+        priority = temp % 13;
+        value = temp % 13;
+        if(value > 10) {value = 10;}
+        if(temp > 0 && temp < 14) {suit = 1;}
+        if(temp > 13 && temp < 27){suit = 2;}
+        if(temp > 26 && temp < 40){suit = 3;}
+        if(temp > 39 && temp < 53){suit = 4;}
+        convertedHand.push_back(new Card(priority, suit, value));
+    }
+    return convertedHand;
+}
+Card* intToCard(int card){
+    Card* convertedCard;
+    int priority, suit, value;
+    priority = card % 13;
+    value = card % 13;
+    if(value > 10) {value = 10;}
+    if(card > 0 && card < 14) {suit = 1;}
+    if(card > 13 && card < 27){suit = 2;}
+    if(card > 26 && card < 40){suit = 3;}
+    if(card > 39 && card < 53){suit = 4;}
+    convertedCard = new Card(priority, suit, value);
+    return convertedCard;
+}
 void goPhase(Player* players[], Deck * deck, ShowCribbage* display, Card* cut){
     pTurn = (dealerPos +1) % 2;
     vector<Card*> roundCards;
@@ -207,24 +260,59 @@ void playRound(Player* players[] , ShowCribbage* display) {
     delete cut;
     delete deck;
 }
+void phaseIII(){
+}
+void phaseII(){
+}
+void phaseI(/*ShowCribbage * display*/){
+    myClient = clientConnection::createInstance();
+    vector<int> dealtHand;
+    dealtHand = myClient->phaseI();
+    players[0]->hand = intsToCards(dealtHand);
+    Card* cut = new Card();
+    //display->drawCards(players, cut, 1, 0, false, crib, dealerPos, 0, 0);
+    int gophase = 0;
+    int selected;
 
-void playGame(){
-    //Ask player to input name?
+    /*Discard 1st human card */
+    //while(players[0]->hand.size() > 4){ USE THIS WHEN COVERING GAME RECOVERY
+    //selected = display->getCard(players[0], 1, gophase); //getCard only allows a valid card to be played (play game to see)
+    selected = 1;
+    crib.push_back(players[0]->hand.at(selected)); //add discarded cards to crib
+    myClient->tellDiscard(0, selected,cardToInt(players[0]->hand.at(selected))); //add discarded cards to crib);
+    players[0]->hand.erase(players[0]->hand.begin()+selected);
+    //display->drawCards(players, cut, 1, 0, true, crib, dealerPos, 0, 0);
+
+    /*Discard 2nd human card */
+    //selected = display->getCard(players[0], 1, gophase);
+    selected = 3;
+    crib.push_back(players[0]->hand.at(selected));
+    myClient->tellDiscard(0, selected,cardToInt(players[0]->hand.at(selected))); //add discarded cards to crib);
+    players[0]->hand.erase(players[0]->hand.begin()+selected);
+    //display->drawCards(players, cut, 1, 0, true, crib, dealerPos,  0, 0);
+
+    //WRITE A METHOD THAT DOES THIS ON SERVER
+    players[0]->scoreHand = players[0]->hand; //update scoring hand with card chosen
+
+    myClient->AICards();//
+
+    /*Discard AI cards on client; can get away with this because client and server will always discard last card in array */
+    crib.push_back(players[1]->hand.back());
+    players[1]->hand.pop_back(); //remove card from hand
+    crib.push_back(players[1]->hand.back());
+    players[1]->hand.pop_back(); //remove card from hand
+    //display->drawCards(players, cut, 1, 0, true, crib, dealerPos,  0, 0);
+}
+//INITIALIZE GAME WILL CALL: READHARDSTATE, WHICH GETS ALL INFO FROM SERVER
+void initializeGame(){
+    myClient = clientConnection::createInstance();
     Player * human = new Player(/*getPlayerIno*/true, "Jesus");
     Player * AI = new Player(/*getPlayerInfo*/false, "ROBOT");
-    //ShowCribbage * display = new ShowCribbage();
-    Player* players[2];
+    //Player* players[2];
     players[0] = human;
     players[1] = AI;
     dealerPos = 0; //should randomly generate
     pTurn = 1;
-    myClient = clientConnection::createInstance();
-    xmlrpc_c::value resultHand;
-    vector<int> testReturned;
-    testReturned = myClient->phaseI();
-    for(int k =0; k < testReturned.size(); k++){
-        cout << "Card Index returned: " << testReturned.at(k);
-    }
 
     //myClient->call(serverUrl,phaseI,&resultHand);
     //xmlrpc_c::value_array handFromServer(resultHand);
@@ -246,9 +334,15 @@ void playGame(){
 
 
 int main(int argc, char* argv[]){
+    initializeGame();
+    //ShowCribbage * display = new ShowCribbage();
+    phase = 1;
+    while(players[0]->getPoints() < WINNING && players[1]->getPoints() < WINNING){
+        if(phase == 1) phaseI();
+        if(phase == 2) phaseII();
+        if(phase == 3) phaseIII();
+    }
 
-
-    playGame();
     return 0;
 }
 

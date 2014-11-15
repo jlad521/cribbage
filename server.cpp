@@ -18,6 +18,8 @@ using namespace std;
 //GLOBAL DECLARATOINS:
 Player* players[2];
 int dealerPos, pTurn;
+vector<Card*> crib;
+Card* cut;
 
 static int callback(void *NotUsed, int argc, char **argv, char **azColName){
     int i;
@@ -222,8 +224,13 @@ if( rc != SQLITE_OK ){
 vector<int> cardsToInts(vector<Card*> hand){
     vector<int> convertedHand;
     for(int i = 0; i < hand.size(); i++){
-        convertedHand.push_back(hand.at(i)->getPriority() * hand.at(i)->getSuit());
+        convertedHand.push_back((hand.at(i)->getSuit()-1)*13 + hand.at(i)->getPriority());
     }
+    return convertedHand;
+}
+
+int cardToInt(Card* card){
+    return (card->getSuit() - 1) * 13 + card->getPriority();
 }
 vector<Card*> intsToCards(vector<int> hand){
     vector<Card*> convertedHand;
@@ -239,8 +246,60 @@ vector<Card*> intsToCards(vector<int> hand){
         if(temp > 39 && temp < 53){suit = 4;}
         convertedHand.push_back(new Card(priority, suit, value));
     }
+    return convertedHand;
 }
+Card* intToCard(int card){
+    Card* convertedCard;
+    int priority, suit, value;
+    priority = card % 13;
+    value = card % 13;
+    if(value > 10) {value = 10;}
+    if(card > 0 && card < 14) {suit = 1;}
+    if(card > 13 && card < 27){suit = 2;}
+    if(card > 26 && card < 40){suit = 3;}
+    if(card > 39 && card < 53){suit = 4;}
+    convertedCard = new Card(priority, suit, value);
+    return convertedCard;
+}
+class AIDiscards : public xmlrpc_c::method {
 
+    public:
+        AIDiscards(){}
+        void
+            execute(xmlrpc_c::paramList const& paramList,
+                    xmlrpc_c::value* returnP) {
+                crib.push_back(players[1]->hand.back());
+                players[1]->hand.pop_back();
+                crib.push_back(players[1]->hand.back());
+                players[1]->hand.pop_back();
+                *returnP = xmlrpc_c::value_int(5);
+            }
+};
+
+class tellDiscard : public xmlrpc_c::method {
+    public:
+        tellDiscard(){}
+        void
+            execute(xmlrpc_c::paramList const& paramList,
+                    xmlrpc_c::value* returnP) {
+                int const pIndex(paramList.getInt(0));
+                int const cIndex(paramList.getInt(1));
+                int const cardNum(paramList.getInt(2));
+                paramList.verifyEnd(3);
+                cout << "pIndex: " << pIndex << " cIndex: " <<cIndex << " cardNum: " <<cardNum << endl;
+                crib.push_back(intToCard(cardNum));
+                for(int k = 0; k < players[pIndex]->hand.size(); k++){
+                    cout << "player cards before: " << players[pIndex]->hand.at(k)->getPriority() << " " <<endl;
+                }
+                players[pIndex]->hand.erase(players[pIndex]->hand.begin()+cIndex);
+                cout << " --------------------------------- " << endl;
+
+                for(int i = 0; i < players[pIndex]->hand.size(); i++){
+                    cout << "player cards before: " << players[pIndex]->hand.at(i)->getPriority() << " " <<endl;
+                }
+                *returnP = xmlrpc_c::value_int(5);
+            }
+};
 
 class phaseI : public xmlrpc_c::method {
     public:
@@ -250,16 +309,19 @@ class phaseI : public xmlrpc_c::method {
                     xmlrpc_c::value* returnP) {
                 Deck * deck = new Deck();
                 Card * cut;
-                players[1]->hand = deck->dealCards();
                 players[0]->hand = deck->dealCards();
-                cut = deck->cutDeck();
+                //players[0]->scoreHand = players[0]->hand;
+                players[1]->hand = deck->dealCards();
+                //players[1]->scoreHand = players[1]->hand;
+                cut = deck->cutDeck(); //SHOULD I DO THIS HERE, OR P2??
                 vector<xmlrpc_c::value> cardData;
                 vector<int> converted = cardsToInts(players[0]->hand);
-                for(int i = 0; i < players[0]->hand.size(); i++){
+                for(int i = 0; i < converted.size(); i++){
                     cardData.push_back(xmlrpc_c::value_int(converted.at(i)));
                 }
                 xmlrpc_c::value_array array(cardData);
                 *returnP = array;
+                delete deck;
                 //now have to write to dB
                 //--> need to create hands table
             }
@@ -281,27 +343,32 @@ bool existingGame(){
 int
 main(int           const,
         const char ** const) {
-/*
-    if(existingGame){
-        //readValues from dB and reinitialize values
-        // Stub for now, but will read from dB to get these values
-        Card* humanLPstub = new Card(1,4,1);
-        Card* AILPstub = new Card(13,4,10);
+    /*
+       if(existingGame){
+    //readValues from dB and reinitialize values
+    // Stub for now, but will read from dB to get these values
+    Card* humanLPstub = new Card(1,4,1);
+    Card* AILPstub = new Card(13,4,10);
 
-        players[0] = new Player(0, 13, true, "Jesus", humanLPstub);
-        players[1] = new Player(1, 21, false, "ROBOT", AILPstub);
-        dealerPos = 1; //continue initializing variables
+    players[0] = new Player(0, 13, true, "Jesus", humanLPstub);
+    players[1] = new Player(1, 21, false, "ROBOT", AILPstub);
+    dealerPos = 1; //continue initializing variables
     }
     else{
-        //TABLES CREATED IN MAKE GAME; MAKE THEM CORRECT
-        makeGame(); //creates tables, initializes game objects
+    //TABLES CREATED IN MAKE GAME; MAKE THEM CORRECT
+    makeGame(); //creates tables, initializes game objects
     }
-*/
-     makeGame(); //creates tables, initializes game objects
+    */
+    makeGame(); //creates tables, initializes game objects
 
     /* CALL YOUR WRITE AND READ METHODS HERE!
      * ./compile, then ./server to test
      */
+    int failed = 14;
+    Card* test = new Card(14, 1, 1);
+    int letsseee = cardToInt(test);
+    Card* ahh = intToCard(failed);
+    cout << "value: " << letsseee << "Card: " << ahh->getPriority();
 
     try {
         xmlrpc_c::registry myRegistry;
@@ -313,6 +380,9 @@ main(int           const,
 
         xmlrpc_c::methodPtr const phaseIP(new phaseI);
         myRegistry.addMethod("server.phaseI", phaseIP);
+
+        xmlrpc_c::methodPtr const tellDiscardP(new tellDiscard);
+        myRegistry.addMethod("tellDiscard", tellDiscardP);
         //xmlrpc_c::methodPtr const getGameInfoP(new getGameInfo);
         //myRegistry.addMethod("getGameInfo", getGameInfoP);
 
