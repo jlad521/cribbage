@@ -10,14 +10,14 @@
 #include "xmlrpc-c/base.hpp"
 #include "xmlrpc-c/registry.hpp"
 #include "xmlrpc-c/server_abyss.hpp"
-//#include "Cribbage.h"
 #include "Deck.h"
 #include <string>
 #include "Player.h"
-//Global declarations
+using namespace std;
+
+//GLOBAL DECLARATOINS:
 Player* players[2];
 int dealerPos, pTurn;
-using namespace std;
 
 static int callback(void *NotUsed, int argc, char **argv, char **azColName){
     int i;
@@ -183,9 +183,9 @@ class getPlayerInfo : public xmlrpc_c::method {
                 //*returnP = xmlrpc_c::value_int(k);
             }
 };
-//SHOULD TEST PLAYERS FIRST, BEFORE WRITING THIS
-//makeGame
+//makeGame: Initializes game objects, creates database tables
 void makeGame(){
+    //PLAYERS ALREADY INITIALIZED, SO DON'T DO IT AGAIN IN MAIN
     Player * AI = new Player(false, "ROBOT");
     Player * human = new Player(true, "Jesus");
     players[0] = human;
@@ -204,18 +204,19 @@ void makeGame(){
         exit(0);
     }else{
         fprintf(stderr, "Opened database successfully\n");
-        sql = "CREATE TABLE GAME("  \
-               "ID INT PRIMARY KEY     NOT NULL," \
-               "position INT, points INT, isHuman INT, name VARCHAR(50), lastPlayed INT);"; //NEED TO ADD SCOREHAND AND HAND
-    }
-    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
-    if( rc != SQLITE_OK ){
-        fprintf(stderr, "SQL error: %s\n", zErrMsg);
-        sqlite3_free(zErrMsg);
-    }else{
-        fprintf(stdout, "Table created successfully\n");
+        sql = "CREATE TABLE GAME("
+            "ID INT PRIMARY KEY     NOT NULL,"   //UPDATE TABLE ARGUMENTS IF THEY DON'T MATCH HOW YOU SERIALIZE
+            "position INT, points INT, isHuman INT, name VARCHAR(50), lastPlayed INT);"; //NEED TO ADD SCOREHAND AND HAND }
+}
+rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+if( rc != SQLITE_OK ){
+    fprintf(stderr, "SQL error: %s\n", zErrMsg);
+    sqlite3_free(zErrMsg);
+}else{
+    fprintf(stdout, "Table created successfully\n");
+}
+//MAKE PLAYERS TABLE HERE
 
-    }
 }
 
 vector<int> cardsToInts(vector<Card*> hand){
@@ -259,10 +260,8 @@ class phaseI : public xmlrpc_c::method {
                 }
                 xmlrpc_c::value_array array(cardData);
                 *returnP = array;
-
                 //now have to write to dB
                 //--> need to create hands table
-
             }
 
 };
@@ -282,20 +281,27 @@ bool existingGame(){
 int
 main(int           const,
         const char ** const) {
-
+/*
     if(existingGame){
         //readValues from dB and reinitialize values
-        /*Stub for now, but will read from dB to get these values*/
+        // Stub for now, but will read from dB to get these values
         Card* humanLPstub = new Card(1,4,1);
         Card* AILPstub = new Card(13,4,10);
 
-       players[0] = new Player(0, 13, true, "Jesus", humanLPstub);
-       players[1] = new Player(1, 21, false, "ROBOT", AILPstub);
-       dealerPos = 1; //continue initializing variables
+        players[0] = new Player(0, 13, true, "Jesus", humanLPstub);
+        players[1] = new Player(1, 21, false, "ROBOT", AILPstub);
+        dealerPos = 1; //continue initializing variables
     }
     else{
+        //TABLES CREATED IN MAKE GAME; MAKE THEM CORRECT
         makeGame(); //creates tables, initializes game objects
     }
+*/
+     makeGame(); //creates tables, initializes game objects
+
+    /* CALL YOUR WRITE AND READ METHODS HERE!
+     * ./compile, then ./server to test
+     */
 
     try {
         xmlrpc_c::registry myRegistry;
@@ -324,14 +330,14 @@ main(int           const,
 }
 
 /*
-    sql = "INSERT INTO GAME () "  \
-           //USE SERIALIZE FUNCTION IN VALUES COMMAND
-           "VALUES (1, serialize);";
+   sql = "INSERT INTO GAME () "  \
+          //USE SERIALIZE FUNCTION IN VALUES COMMAND
+          "VALUES (1, serialize);";
 
-    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
-    if( rc != SQLITE_OK ){
-        fprintf(stderr, "SQL error: %s\n", zErrMsg);
-        sqlite3_free(zErrMsg);
-    }else{
-        fprintf(stdout, "Records created successfully\n");
-        */
+          rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+          if( rc != SQLITE_OK ){
+          fprintf(stderr, "SQL error: %s\n", zErrMsg);
+          sqlite3_free(zErrMsg);
+          }else{
+          fprintf(stdout, "Records created successfully\n");
+          */

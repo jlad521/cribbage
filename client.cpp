@@ -39,15 +39,21 @@ clientConnection* clientConnection::createInstance(){
         return an_instance;
     }
 }
-
+//Have it return ints for now, but will eventually return vector<Card*>
 vector<int> clientConnection::phaseI(){
     xmlrpc_c::value result;
+        vector<int> cards;
     try{
         string const serverUrl("http://localhost:8080/RPC2");
         string const phaseI("server.phaseI");
         myClient.call(serverUrl, phaseI, &result);
         xmlrpc_c::value_array dealtHand(result);
         vector<xmlrpc_c::value> const hand(dealtHand.vectorValueValue());
+        for(int i = 0; i < 6; i++){
+//MIGHT HAVE TO STORE AS CONST INT FIRST:   int const val1 = xmlrpc_c::value_int(hand.at(i));
+        cards.push_back(xmlrpc_c::value_int(hand.at(i)));
+        }
+        return cards;
     } catch (exception const& e) {
         cerr << "Client threw error: " << e.what() << endl;
         sleep(6000);
@@ -63,10 +69,9 @@ vector<int> clientConnection::phaseI(){
 //string const definePlayers("define_players");
 using namespace std;
 
-
 vector<Card*> crib;
 int dealerPos, pTurn; // I'm sure there'll be more
-
+    clientConnection *myClient;
 
 void goPhase(Player* players[], Deck * deck, ShowCribbage* display, Card* cut){
     pTurn = (dealerPos +1) % 2;
@@ -207,14 +212,20 @@ void playGame(){
     //Ask player to input name?
     Player * human = new Player(/*getPlayerIno*/true, "Jesus");
     Player * AI = new Player(/*getPlayerInfo*/false, "ROBOT");
-    ShowCribbage * display = new ShowCribbage();
+    //ShowCribbage * display = new ShowCribbage();
     Player* players[2];
     players[0] = human;
     players[1] = AI;
     dealerPos = 0; //should randomly generate
     pTurn = 1;
+    myClient = clientConnection::createInstance();
     xmlrpc_c::value resultHand;
-    myClient->phaseI();
+    vector<int> testReturned;
+    testReturned = myClient->phaseI();
+    for(int k =0; k < testReturned.size(); k++){
+        cout << "Card Index returned: " << testReturned.at(k);
+    }
+
     //myClient->call(serverUrl,phaseI,&resultHand);
     //xmlrpc_c::value_array handFromServer(resultHand);
     //vector<xmlrpc_c::value> const dealtHand(handFromServer);
@@ -233,14 +244,11 @@ void playGame(){
        */
 }
 
+
 int main(int argc, char* argv[]){
-    clientConnection *myClient;
-    myClient = clientConnection::createInstance();
 
 
     playGame();
     return 0;
 }
-
-
 
