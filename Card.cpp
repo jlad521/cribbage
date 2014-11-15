@@ -9,6 +9,11 @@ Card::Card(char a, int x, int z){
         priority = x;	  // priority
         suit = z;
 	}
+Card::Card(int x, int y, int z){
+    priority = x;
+    suit = y;
+    value = z;
+}
 Card::Card() {
 
         faceValue = 0;  // face value

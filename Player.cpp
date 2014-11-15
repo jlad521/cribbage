@@ -12,6 +12,14 @@ Player::Player(bool h, string n){
     lastCard = new Card();
 }
 
+Player::Player(int pos, int pts, bool isHuman, string nm, Card* lp /*vector<Card* Hand, scoreHand*/){
+    position = pos;
+    points = pts;
+    isHuman = isHuman;
+    name = nm;
+    lastCard = new Card(); //THIS SHOULD HOLD THE INT TO CARD CONVERSION
+}
+
 void Player::setLastCard(Card* card) {
     lastCard = card;
 }

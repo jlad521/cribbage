@@ -1,6 +1,7 @@
 class Card{
 public:
 	Card(char a, int i, int t);
+    Card(int, int, int);
     Card();
     ~Card();
 	void setFace(char a);
