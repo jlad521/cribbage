@@ -389,6 +389,84 @@ class sampleRandMethod : public xmlrpc_c::method {
             }
 };
 
+class writeHardState : public xmlrpc_c::method {
+	public:
+		writeHardState(){}
+
+		void execute(xmlrpc_c::paramList const& paramList, const xmlrpc_c::callInfo * const callInfoP, xmlrpc_c::value* returnP){
+			sqlite3 *db;
+                	char *zErrMsg = 0;
+                	int rc;
+                	const char* sql;
+                	const char* data = "Callback function called";
+                	rc = sqlite3_open("test.db", &db);
+
+			if( rc ){ // opens DB
+                   		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+                    		exit(0);
+                	}
+
+			else{
+				string sql_string = "INSERT INTO GAME VALUES (1, 'player1', 'Player', '" + players[0]->serialize() + "');";
+				//sql = sql_string.c_str();
+				rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+
+				if(rc!= SQLITE_OK ){
+					fprintf(stderr, "SQL error: %s\n", zErrMsg);
+					sqlite3_free(zErrMsg);
+				}
+
+				else{
+					fprintf(stdout, "Records created successfully\n");
+				}
+
+				fprintf(stderr, "Opened database successfully\n");
+
+			}
+
+			int k = 5;
+                	vector<xmlrpc_c::value> array;
+                	array.push_back(xmlrpc_c::value_int(5));
+                	*returnP = xmlrpc_c::value_int(5);
+
+	}
+};
+
+
+class readHardState : public xmlrpc_c::method {
+	public:
+		readHardState(){}
+
+		void execute(xmlrpc_c::paramList const& paramList, const xmlrpc_c::callInfo * const callInfoP, xmlrpc_c::value* returnP){
+			sqlite3 *db;
+		        char *zErrMsg = 0;
+		        int rc;
+		        const char* sql;
+		        const char* data = "Callback function called";
+		        //rc = sqlite3_open("test.db", &db);
+			sql = "SELECT OBJECT_VALUE from GAME WHERE OBJECT_NAME='player1'";
+
+			rc = sqlite3_exec(db, sql, callback, (void*)data, &zErrMsg);
+			if ( rc != SQLITE_OK){
+				fprintf(stderr, "SQL error: %s\n", zErrMsg);
+				sqlite3_free(zErrMsg);
+			}
+
+			else{
+				fprintf(stdout, "Operation done successfully.\n");
+			}
+
+			int k = 5;
+                	vector<xmlrpc_c::value> array;
+                	array.push_back(xmlrpc_c::value_int(5));
+                	*returnP = xmlrpc_c::value_int(5);
+		}
+};
+
+
+
+
+
 class getGameInfo : public xmlrpc_c::method {
     public:
         getGameInfo() {}
@@ -677,7 +755,7 @@ main(int           const,
         xmlrpc_c::methodPtr const tellDiscardP(new tellDiscard);
         myRegistry.addMethod("tellDiscard", tellDiscardP);
 
-        //xmlrpc_c::methodPtr const writeHardStateP(new writeHardState /* OR WHATEVER YOU CALLED YOUR METHOD */);
+        //xmlrpc_c::methodPtr const writeHardStateP(new writeHardState);
         //myRegistry.addMethod("writeHardState", writeHardStateP);
 
         //xmlrpc_c::methodPtr const getGameInfoP(new getGameInfo);

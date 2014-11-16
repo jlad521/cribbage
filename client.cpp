@@ -10,7 +10,7 @@
 //#include "display.h"
 #include <unistd.h>
 #include "Cribbage.h"
-#include "clientCribbage.h"
+//#include "clientCribbage.h"
 //#include "Card.h"
 #include "Player.h"
 #include "Deck.h"
@@ -260,7 +260,7 @@ void playRound(Player* players[] , ShowCribbage* display) {
     //AIscore = scorePhase(players[1]->scoreHand, cut);
     players[1]->addPoints(AIscore);
     //cribScore = scorePhase(crib, cut);
-    if(dealerPos == players[0]->getPosition()){
+        if(dealerPos == players[0]->getPosition()){
         players[0]->addPoints(cribScore);
         pScore += cribScore;
     }
