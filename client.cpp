@@ -10,7 +10,7 @@
 //#include "display.h"
 #include <unistd.h>
 #include "Cribbage.h"
-#include "clientCribbage.h"
+//#include "clientCribbage.h"
 //#include "Card.h"
 #include "Player.h"
 #include "Deck.h"
