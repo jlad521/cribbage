@@ -103,6 +103,8 @@ void clientConnection::writeHardState(/* DOES IT NEED ANY INPUTS?? */){
 vector<Card*> crib;
 int dealerPos, pTurn, phase; // I'm sure there'll be more
 clientConnection *myClient;
+Card* cut = new Card();
+Card* storeCut = new Card();
 
 vector<int> cardsToInts(vector<Card*> hand){
     vector<int> convertedHand;
@@ -284,12 +286,22 @@ void phaseII(){
 }
 void phaseI(/*ShowCribbage * display*/){
     myClient = clientConnection::createInstance();
-    /* CALL YOUR SERVER METHOD HERE */
-    myClient->writeHardState();
-    vector<int> dealtHand;
-    dealtHand = myClient->phaseI();
-    players[0]->hand = intsToCards(dealtHand);
-    Card* cut = new Card();
+    vector<int> dealtCards;
+    vector<Card*> p0Cards;
+    vector<Card*> p1Cards;
+    dealtCards = myClient->phaseI();
+    for(int j = 0; j<6; j++){
+        p0Cards.push_back(intToCard(dealtCards.at(j)));
+        cout << "Card: " << p0Cards.back()->getPriority() << " " <<endl;
+    }
+    for(int k = 6; k < 12; k++){
+        p1Cards.push_back(intToCard(dealtCards.at(k)));
+        cout << "Card: " << p1Cards.back()->getPriority() << " " <<endl;
+    }
+        cout << "cutCard: " << intToCard(dealtCards.at(12))->getPriority() << " " <<endl;
+    storeCut = intToCard(dealtCards.at(12));
+    players[0]->hand = p0Cards;
+    players[1]->hand = p1Cards;
     //display->drawCards(players, cut, 1, 0, false, crib, dealerPos, 0, 0);
     int gophase = 0;
     int selected;
@@ -313,6 +325,7 @@ void phaseI(/*ShowCribbage * display*/){
     //display->drawCards(players, cut, 1, 0, true, crib, dealerPos,  0, 0);
 
     //WRITE A METHOD THAT DOES THIS ON SERVER
+    //prepP2
     players[0]->scoreHand = players[0]->hand; //update scoring hand with card chosen
 
     //myClient->AICards();//
@@ -322,7 +335,9 @@ void phaseI(/*ShowCribbage * display*/){
     players[1]->hand.pop_back(); //remove card from hand
     crib.push_back(players[1]->hand.back());
     players[1]->hand.pop_back(); //remove card from hand
+    players[1]->scoreHand = players[1]->hand; //update scoring hand with card chosen
     //display->drawCards(players, cut, 1, 0, true, crib, dealerPos,  0, 0);
+    phase = 2;
 }
 //INITIALIZE GAME WILL CALL: READHARDSTATE, WHICH GETS ALL INFO FROM SERVER
 void initializeGame(){

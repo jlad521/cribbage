@@ -30,6 +30,278 @@ static int callback(void *NotUsed, int argc, char **argv, char **azColName){
     return 0;
 }
 
+int goPoints(vector<Card*> v){
+    int pts = 0;
+    pts += PairsGo(v);
+    pts += RunScoreGo(v);
+    return pts;
+}
+
+int AIGoChoice(Player* p, int goNum){
+    for(int i = 0; i < p->hand.size(); i++){
+        if(p->hand.at(i)->getValue() + goNum < 31) {return i;}
+    }
+    return -1; //return "go" if can't play valid card
+}
+
+int scorePhase(vector<Card*> hand, Card* cut){
+    int points = 0;
+    points += Pairs(hand);
+    points += JackSameSuit(hand, cut);
+    points += Fifteen(hand);
+    points += RunScore(hand);
+    points += FlushScore(hand);
+    //cout << "IT FOUND: " << points;
+    return points;
+}
+
+vector<Card*> sortHand(vector<Card*> v){
+    int i, j;
+    Card*  t;
+    vector<Card*> temp;
+
+    for (i = 0; i < (v.size()-1); i++){
+        for (j = 0; j < (v.size()-1); j++){
+            if ((v.at(j+1)->getPriority()) < (v.at(j)->getPriority())){
+                t = v[j];
+                v[j] = v[j+1];
+                v[j+1] = t;
+            }
+        }
+    }
+    return v;
+}
+
+
+int JackSameSuit(vector<Card*> v, Card* cut){ // 1 pt if player's card is Jack and same suit as starter card
+    int i;
+
+    for(i = 0; i < v.size(); i++){
+        if(v.at(i)->getFace() == 'J' && v.at(i)->getSuit() == cut->getSuit()){
+            return (1);
+        }
+    }
+    return(0);
+}
+
+
+int Pairs(vector<Card*> v){ // 2 pts per pair (3 of a kind - 3 pairs; 4 of a kind - 6 pairs)
+    int n = 0;
+    int i, b;
+
+    for(i = 0; i < v.size(); i++){
+        for(b = (i+1); b < v.size(); b++){
+            if(v.at(i)->getFace() == v.at(b)->getFace()){
+                n++;
+            }
+        }
+    }
+    return (n*2);
+}
+
+
+int ThirtyOne(vector<Card*> v){ // 2 pts for reaching 31 exactly
+    int n = 0;
+    int i;
+
+    for(i = 0; i < v.size(); i++){
+        n = n + (v.at(i)->getValue());
+    }
+
+    if(n == 31)
+        return(2);
+    else
+        return(0);
+}
+
+int Fifteen(vector<Card*> v){  // 2 pts per combination that equals fifteen
+    int n = 0;
+    int i = 0;
+    int b, d, e;
+    vector<Card*> temp;
+
+    v = sortHand(v);
+
+    if((v.at(i)->getValue()) + (v.at(i+1)->getValue()) + (v.at(i+2)->getValue()) + (v.at(i+3)->getValue()) + (v.at(i+4)->getValue()) == 15){n++;} // 5-card combo
+
+    for(i = 0; i < v.size(); i++){ // 4 card combination
+        for(b = (i+1); b < v.size(); b++){
+            for(d = (i+2); d < v.size(); d++){
+                for(e = (i+3); e < v.size(); e++){
+                    if (v.at(i)->getValue() + v.at(b)->getValue() + v.at(d)->getValue() + v.at(e)->getValue() == 15){
+                        n++;
+                    }
+                }
+            }
+        }
+    }
+
+    for(i = 0; i < v.size(); i++){ // 3 card combination
+        for(b = (i+1); b < v.size(); b++){
+            for(d =(i+2); d < v.size(); d++){
+                if((v.at(i)->getValue()) + (v.at(b)->getValue()) + (v.at(d)->getValue()) == 15){
+                    n++;
+                }
+            }
+        }
+    }
+
+    for(i = 0; i < v.size(); i++){ // 2 card combination
+        for(b = (i+1); b < v.size(); b++){
+            if((v.at(i)->getValue()) + (v.at(b)->getValue()) == 15){
+                n++;
+            }
+        }
+    }
+
+    return (n*2);
+}
+
+
+int RunScore(vector<Card*> v){ // n points per card in run
+    v = sortHand(v);
+
+    int i;
+    int n = 0;
+
+    for(i = 0; i < (v.size()-2); i++){
+        if (i == 0 && (v[i+4]->getPriority()) == (v[i]->getPriority() + 4) &&
+                (v[i+3]->getPriority()) == (v[i]->getPriority() + 3) &&
+                (v[i+2]->getPriority()) == (v[i]->getPriority() + 2) &&
+                (v[i+1]->getPriority()) == (v[i]->getPriority() + 1)){return(5);} // check for 5-card run
+        else if ((i == 1 || i == 0) && (v.at(i+3)->getPriority()) == (v.at(i)->getPriority() + 3) &&
+                (v.at(i+2)->getPriority()) == (v.at(i)->getPriority() + 2) &&
+                (v.at(i+1)->getPriority()) == (v.at(i)->getPriority() + 1)){return(4);} // check for 4-card run
+        else if ((i == 2 || i == 1 || i == 0) && (v.at(i+2)->getPriority()) == (v.at(i)->getPriority() + 2) &&
+                (v.at(i+1)->getPriority()) == (v.at(i)->getPriority() + 1)){return(3);} // check for 3-card run
+    }
+    return(0);
+}
+
+
+
+int FlushScore(vector<Card*> v){ // 4 points for 4 cards in player's hand all of same suit
+    int i = 0;
+    int clubs = 0;
+    int diamonds = 0;
+    int hearts = 0;
+    int spades = 0;
+
+    for(i = 0; i < v.size(); i++){ // checking for flush from 4 cards
+        switch(v.at(i)->getSuit()){
+            case (1):
+                spades++;
+                break;
+            case (2):
+                hearts++;
+                break;
+            case (3):
+                clubs++;
+                break;
+            case (4):
+                diamonds++;
+                break;
+            default:
+                printf("This ain't no officiated suit, son..");
+                break;
+        }
+    }
+
+    if(clubs >= 4)
+        return(clubs);
+    else if(diamonds >= 4)
+        return(diamonds);
+    else if(hearts >= 4)
+        return(hearts);
+    else if(spades >= 4)
+        return(spades);
+    else
+        return(0);
+
+}
+
+
+int PairsGo(vector<Card*> v){
+    int SIZE = (v.size()-1);
+
+    if(SIZE == 2){
+        if ((v.at(SIZE)->getPriority() == v.at(SIZE-1)->getPriority())) { // one pair
+            return(2);
+        }
+    }
+
+    if(SIZE == 3){
+        if ((v.at(SIZE)->getPriority() == v.at(SIZE-1)->getPriority()) && (v.at(SIZE)->getPriority() == v.at(SIZE-2)->getPriority()) ){ // 3 pair (3-of-a-kind)
+            return(6);
+        }
+
+        if ((v.at(SIZE)->getPriority() == v.at(SIZE-1)->getPriority())) { // one pair
+            return(2);
+        }
+    }
+
+    if(SIZE >= 4){
+        if ((v.at(SIZE)->getPriority() == v.at(SIZE-1)->getPriority()) && (v.at(SIZE)->getPriority() == v.at(SIZE-2)->getPriority()) && (v.at(SIZE)->getPriority() == v.at(SIZE-3)->getPriority()) ){ // 6 pair (4-of-a-kind)
+            return(12);
+        }
+
+        if ((v.at(SIZE)->getPriority() == v.at(SIZE-1)->getPriority()) && (v.at(SIZE)->getPriority() == v.at(SIZE-2)->getPriority()) ){ // 3 pair (3-of-a-kind)
+            return(6);
+        }
+
+        if ((v.at(SIZE)->getPriority() == v.at(SIZE-1)->getPriority())) { // one pair
+            return(2);
+        }
+    }
+
+    return(0);
+}
+
+
+int RunScoreGo(vector<Card*> v){
+    int SIZE = (v.size()-1);
+    /*
+       if(SIZE == 3){
+       if ((v.at(SIZE-2)->getPriority() == v.at(SIZE)->getPriority()-2 ) && (v.at(SIZE-1)->getPriority() == v.at(SIZE)->getPriority()-1 ) ||
+       (v.at(SIZE-2)->getPriority() == v.at(SIZE)->getPriority()+2 ) && (v.at(SIZE-1)->getPriority() == v.at(SIZE)->getPriority()+1 )){ // 3-card run combo
+       return(3);
+       }
+
+       }*/
+
+    if(SIZE == 3){
+        if ((v.at(SIZE-3)->getPriority() == v.at(SIZE)->getPriority()-3 ) && (v.at(SIZE-2)->getPriority() == v.at(SIZE)->getPriority()-2 ) && (v.at(SIZE-1)->getPriority() == v.at(SIZE)->getPriority()-1 ) ||
+                (v.at(SIZE-3)->getPriority() == v.at(SIZE)->getPriority()+3 ) && (v.at(SIZE-2)->getPriority() == v.at(SIZE)->getPriority()+2 ) && (v.at(SIZE-1)->getPriority() == v.at(SIZE)->getPriority()+1 )){ // 4-card run combo
+            return(4);
+        }
+
+        if ((v.at(SIZE-2)->getPriority() == v.at(SIZE)->getPriority()-2 ) && (v.at(SIZE-1)->getPriority() == v.at(SIZE)->getPriority()-1 ) ||
+                (v.at(SIZE-2)->getPriority() == v.at(SIZE)->getPriority()+2 ) && (v.at(SIZE-1)->getPriority() == v.at(SIZE)->getPriority()+1 )){ // 3-card run combo
+            return(3);
+        }
+    }
+
+    if(SIZE >= 4){
+        if ((v.at(SIZE-4)->getPriority() == v.at(SIZE)->getPriority()-4 ) && (v.at(SIZE-3)->getPriority() == v.at(SIZE)->getPriority()-3 ) && (v.at(SIZE-2)->getPriority() == v.at(SIZE)->getPriority()-2 ) && (v.at(SIZE-1)->getPriority() == v.at(SIZE)->getPriority()-1 )||
+                (v.at(SIZE-4)->getPriority() == v.at(SIZE)->getPriority()+4 ) && (v.at(SIZE-3)->getPriority() == v.at(SIZE)->getPriority()+3 ) && (v.at(SIZE-2)->getPriority() == v.at(SIZE)->getPriority()+2 ) && (v.at(SIZE-1)->getPriority() == v.at(SIZE)->getPriority()+1 )){
+            return(5); // 5-card combo
+        }
+
+        if ((v.at(SIZE-3)->getPriority() == v.at(SIZE)->getPriority()-3 ) && (v.at(SIZE-2)->getPriority() == v.at(SIZE)->getPriority()-2 ) && (v.at(SIZE-1)->getPriority() == v.at(SIZE)->getPriority()-1 ) ||
+                (v.at(SIZE-3)->getPriority() == v.at(SIZE)->getPriority()+3 ) && (v.at(SIZE-2)->getPriority() == v.at(SIZE)->getPriority()+2 ) && (v.at(SIZE-1)->getPriority() == v.at(SIZE)->getPriority()+1 )){ // 4-card run combo
+            return(4);
+        }
+
+        if ((v.at(SIZE-2)->getPriority() == v.at(SIZE)->getPriority()-2 ) && (v.at(SIZE-1)->getPriority() == v.at(SIZE)->getPriority()-1 ) ||
+                (v.at(SIZE-2)->getPriority() == v.at(SIZE)->getPriority()+2 ) && (v.at(SIZE-1)->getPriority() == v.at(SIZE)->getPriority()+1 )){ // 3-card run combo
+            return(3);
+        }
+    }
+
+    return(0);
+}
+
+
 void log_sql(int random)
 {
     sqlite3 *db;
@@ -262,7 +534,6 @@ Card* intToCard(int card){
     return convertedCard;
 }
 class AIDiscards : public xmlrpc_c::method {
-
     public:
         AIDiscards(){}
         void
@@ -275,6 +546,28 @@ class AIDiscards : public xmlrpc_c::method {
                 *returnP = xmlrpc_c::value_int(5);
             }
 };
+class phaseIIturn : public xmlrpc_c::method {
+    public:
+        phaseIIturn(){}
+        void
+            execute(xmlrpc_c::paramList const& paramList,
+                    xmlrpc_c::value* returnP) {
+                int goNum, index, played, lastPlayed; //from dB
+            }
+};
+
+class prepPII : public xmlrpc_c::method {
+    public:
+        prepPII(){}
+        void
+            execute(xmlrpc_c::paramList const& paramList,
+                    xmlrpc_c::value* returnP) {
+               players[0]->scoreHand = players[0]->hand;
+               players[1]->scoreHand = players[1]->hand;
+               int phase = 2;
+            }
+};
+
 
 class tellDiscard : public xmlrpc_c::method {
     public:
@@ -307,6 +600,7 @@ class phaseI : public xmlrpc_c::method {
         void
             execute(xmlrpc_c::paramList const& paramList,
                     xmlrpc_c::value* returnP) {
+                srand(time(NULL));
                 Deck * deck = new Deck();
                 Card * cut;
                 players[0]->hand = deck->dealCards();
@@ -323,7 +617,7 @@ class phaseI : public xmlrpc_c::method {
                 for(int k = 0; k < converted.size(); k++){
                     cardData.push_back(xmlrpc_c::value_int(converted.at(k)));
                 }
-                cardData.push_back(cardToInt(cut));
+                cardData.push_back(xmlrpc_c::value_int(cardToInt(cut)));
                 xmlrpc_c::value_array array(cardData);
                 *returnP = array;
                 delete deck;
@@ -332,7 +626,6 @@ class phaseI : public xmlrpc_c::method {
             }
 
 };
-
 
 //NEED TO DOUBLE CHECK THIS IS HOW TO CHECK IF DATABASE IS EMPTY
 bool existingGame(){
@@ -369,11 +662,6 @@ main(int           const,
     /* CALL YOUR WRITE AND READ METHODS HERE!
      * ./compile, then ./server to test
      */
-    int failed = 14;
-    Card* test = new Card(14, 1, 1);
-    int letsseee = cardToInt(test);
-    Card* ahh = intToCard(failed);
-    cout << "value: " << letsseee << "Card: " << ahh->getPriority();
 
     try {
         xmlrpc_c::registry myRegistry;
@@ -389,8 +677,8 @@ main(int           const,
         xmlrpc_c::methodPtr const tellDiscardP(new tellDiscard);
         myRegistry.addMethod("tellDiscard", tellDiscardP);
 
-        xmlrpc_c::methodPtr const writeHardStateP(new writeHardState /* OR WHATEVER YOU CALLED YOUR METHOD */);
-        myRegistry.addMethod("writeHardState", writeHardStateP);
+        //xmlrpc_c::methodPtr const writeHardStateP(new writeHardState /* OR WHATEVER YOU CALLED YOUR METHOD */);
+        //myRegistry.addMethod("writeHardState", writeHardStateP);
 
         //xmlrpc_c::methodPtr const getGameInfoP(new getGameInfo);
         //myRegistry.addMethod("getGameInfo", getGameInfoP);
