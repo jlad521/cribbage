@@ -316,9 +316,14 @@ class phaseI : public xmlrpc_c::method {
                 cut = deck->cutDeck(); //SHOULD I DO THIS HERE, OR P2??
                 vector<xmlrpc_c::value> cardData;
                 vector<int> converted = cardsToInts(players[0]->hand);
+                vector<int> aiConvert = cardsToInts(players[1]->hand);
                 for(int i = 0; i < converted.size(); i++){
                     cardData.push_back(xmlrpc_c::value_int(converted.at(i)));
                 }
+                for(int k = 0; k < converted.size(); k++){
+                    cardData.push_back(xmlrpc_c::value_int(converted.at(k)));
+                }
+                cardData.push_back(cardToInt(cut));
                 xmlrpc_c::value_array array(cardData);
                 *returnP = array;
                 delete deck;
@@ -383,6 +388,10 @@ main(int           const,
 
         xmlrpc_c::methodPtr const tellDiscardP(new tellDiscard);
         myRegistry.addMethod("tellDiscard", tellDiscardP);
+
+        xmlrpc_c::methodPtr const writeHardStateP(new writeHardState /* OR WHATEVER YOU CALLED YOUR METHOD */);
+        myRegistry.addMethod("writeHardState", writeHardStateP);
+
         //xmlrpc_c::methodPtr const getGameInfoP(new getGameInfo);
         //myRegistry.addMethod("getGameInfo", getGameInfoP);
 

@@ -17,6 +17,7 @@
 #include "ShowCribbage.h"
 #define WINNING 61
 //#include "client.h"
+Player* players[2];
 class clientConnection{
     private:
         static bool instanceFlag;
@@ -25,6 +26,7 @@ class clientConnection{
     public:
         vector<int> phaseI();
         void tellDiscard(int, int, int);
+        void writeHardState();
         static clientConnection* createInstance();
         ~clientConnection() { instanceFlag = false;}
 };
@@ -42,6 +44,7 @@ clientConnection* clientConnection::createInstance(){
 //Have it return ints for now, but will eventually return vector<Card*>
 vector<int> clientConnection::phaseI(){
     vector<int> cards;
+    vector<int> aiCards;
     try{
         xmlrpc_c::clientSimple myClient;// = new(xmlrpc_c::clientSimple);
         xmlrpc_c::value result;
@@ -50,7 +53,7 @@ vector<int> clientConnection::phaseI(){
         myClient.call(serverUrl, phaseI, &result);
         xmlrpc_c::value_array dealtHand(result);
         vector<xmlrpc_c::value> const hand(dealtHand.vectorValueValue());
-        for(int i = 0; i < 6; i++){
+        for(int i = 0; i < 13; i++){
             cards.push_back(xmlrpc_c::value_int(hand.at(i)));
         }
         return cards;
@@ -78,13 +81,28 @@ void clientConnection::tellDiscard(int pIndex, int cIndex, int cardNum){
     }
 }
 
+void clientConnection::writeHardState(/* DOES IT NEED ANY INPUTS?? */){
+    try{
+        xmlrpc_c::clientSimple myClient;// = new(xmlrpc_c::clientSimple);
+        xmlrpc_c::value value;
+        string const serverUrl("http://localhost:8080/RPC2");
+        string const writeHardState("writeHardState");
+        myClient.call(serverUrl, writeHardState, &value);
+        //You could make the rpc return something if you want, and then manipulate the return here
 
+    } catch (exception const& e) {
+        cerr << "Client threw error: " << e.what() << endl;
+        sleep(6000);
+    } catch (...) {
+        cerr << "Client threw unexpected error." << endl;
+        sleep(6000);
+    }
+}
 /**********************************************************************************************/
 
 vector<Card*> crib;
 int dealerPos, pTurn, phase; // I'm sure there'll be more
 clientConnection *myClient;
-Player* players[2];
 
 vector<int> cardsToInts(vector<Card*> hand){
     vector<int> convertedHand;
@@ -266,6 +284,8 @@ void phaseII(){
 }
 void phaseI(/*ShowCribbage * display*/){
     myClient = clientConnection::createInstance();
+    /* CALL YOUR SERVER METHOD HERE */
+    myClient->writeHardState();
     vector<int> dealtHand;
     dealtHand = myClient->phaseI();
     players[0]->hand = intsToCards(dealtHand);
@@ -273,6 +293,7 @@ void phaseI(/*ShowCribbage * display*/){
     //display->drawCards(players, cut, 1, 0, false, crib, dealerPos, 0, 0);
     int gophase = 0;
     int selected;
+
 
     /*Discard 1st human card */
     //while(players[0]->hand.size() > 4){ USE THIS WHEN COVERING GAME RECOVERY
@@ -294,7 +315,7 @@ void phaseI(/*ShowCribbage * display*/){
     //WRITE A METHOD THAT DOES THIS ON SERVER
     players[0]->scoreHand = players[0]->hand; //update scoring hand with card chosen
 
-    myClient->AICards();//
+    //myClient->AICards();//
 
     /*Discard AI cards on client; can get away with this because client and server will always discard last card in array */
     crib.push_back(players[1]->hand.back());
