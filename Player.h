@@ -18,6 +18,8 @@ class Player{
         bool isHuman;
         int position;
 
+        void reset(string);
+        string serialize();
         int getPosition();
         void setLastCard(Card* card);
         void setHuman(bool val);

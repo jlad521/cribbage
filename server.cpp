@@ -11,7 +11,7 @@
 #include "xmlrpc-c/registry.hpp"
 #include "xmlrpc-c/server_abyss.hpp"
 #include "Deck.h"
-#include <string>
+#include <string.h>
 #include "Player.h"
 using namespace std;
 
@@ -20,6 +20,10 @@ Player* players[2];
 int dealerPos, pTurn;
 vector<Card*> crib;
 Card* cut;
+
+sqlite3 *db;
+char *zErrMsg = 0;
+int rc;
 
 static int callback(void *NotUsed, int argc, char **argv, char **azColName){
     int i;
@@ -30,29 +34,45 @@ static int callback(void *NotUsed, int argc, char **argv, char **azColName){
     return 0;
 }
 
-int goPoints(vector<Card*> v){
-    int pts = 0;
-    pts += PairsGo(v);
-    pts += RunScoreGo(v);
-    return pts;
-}
-
-int AIGoChoice(Player* p, int goNum){
-    for(int i = 0; i < p->hand.size(); i++){
-        if(p->hand.at(i)->getValue() + goNum < 31) {return i;}
+vector<int> cardsToInts(vector<Card*> hand){
+    vector<int> convertedHand;
+    for(int i = 0; i < hand.size(); i++){
+        convertedHand.push_back((hand.at(i)->getSuit()-1)*13 + hand.at(i)->getPriority());
     }
-    return -1; //return "go" if can't play valid card
+    return convertedHand;
 }
 
-int scorePhase(vector<Card*> hand, Card* cut){
-    int points = 0;
-    points += Pairs(hand);
-    points += JackSameSuit(hand, cut);
-    points += Fifteen(hand);
-    points += RunScore(hand);
-    points += FlushScore(hand);
-    //cout << "IT FOUND: " << points;
-    return points;
+int cardToInt(Card* card){
+    return (card->getSuit() - 1) * 13 + card->getPriority();
+}
+vector<Card*> intsToCards(vector<int> hand){
+    vector<Card*> convertedHand;
+    int temp, priority, suit, value;
+    for(int i = 0; i < hand.size(); i++){
+        temp = hand.at(i);
+        priority = temp % 13;
+        value = temp % 13;
+        if(value > 10) {value = 10;}
+        if(temp > 0 && temp < 14) {suit = 1;}
+        if(temp > 13 && temp < 27){suit = 2;}
+        if(temp > 26 && temp < 40){suit = 3;}
+        if(temp > 39 && temp < 53){suit = 4;}
+        convertedHand.push_back(new Card(priority, suit, value));
+    }
+    return convertedHand;
+}
+Card* intToCard(int card){
+    Card* convertedCard;
+    int priority, suit, value;
+    priority = card % 13;
+    value = card % 13;
+    if(value > 10) {value = 10;}
+    if(card > 0 && card < 14) {suit = 1;}
+    if(card > 13 && card < 27){suit = 2;}
+    if(card > 26 && card < 40){suit = 3;}
+    if(card > 39 && card < 53){suit = 4;}
+    convertedCard = new Card(priority, suit, value);
+    return convertedCard;
 }
 
 vector<Card*> sortHand(vector<Card*> v){
@@ -71,7 +91,6 @@ vector<Card*> sortHand(vector<Card*> v){
     }
     return v;
 }
-
 
 int JackSameSuit(vector<Card*> v, Card* cut){ // 1 pt if player's card is Jack and same suit as starter card
     int i;
@@ -301,6 +320,32 @@ int RunScoreGo(vector<Card*> v){
     return(0);
 }
 
+int goPoints(vector<Card*> v){
+    int pts = 0;
+    pts += PairsGo(v);
+    pts += RunScoreGo(v);
+    return pts;
+}
+
+int AIGoChoice(Player* p, int goNum){
+    for(int i = 0; i < p->hand.size(); i++){
+        if(p->hand.at(i)->getValue() + goNum < 31) {return i;}
+    }
+    return -1; //return "go" if can't play valid card
+}
+
+int scorePhase(vector<Card*> hand, Card* cut){
+    int points = 0;
+    points += Pairs(hand);
+    points += JackSameSuit(hand, cut);
+    points += Fifteen(hand);
+    points += RunScore(hand);
+    points += FlushScore(hand);
+    //cout << "IT FOUND: " << points;
+    return points;
+}
+
+
 
 void log_sql(int random)
 {
@@ -389,166 +434,72 @@ class sampleRandMethod : public xmlrpc_c::method {
             }
 };
 
-class writeHardState : public xmlrpc_c::method {
-	public:
-		writeHardState(){}
+class writeNewGame : public xmlrpc_c::method {
+    public:
+        writeNewGame(){}
+        void execute(xmlrpc_c::paramList const& paramList, const xmlrpc_c::callInfo * const callInfoP, xmlrpc_c::value* returnP){
+            sqlite3 *db;
+            char *zErrMsg = 0;
+            int rc;
+            const char* sql;
+            const char* data = "Callback function called";
+            rc = sqlite3_open("test.db", &db);
+            if( rc ){ // opens DB
+                fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+                exit(0);
+            }else{
+                fprintf(stderr, "Opened database successfully\n");
+            }
+            sql = "INSERT INTO GAME(ID, position, points, isHuman, name, lastPlayed, phase, crib)"
+                "VALUES (1, )";
+            //"VALUES (1, 'player1', 'Player', '" + players[0]->serialize() + "');";
+            rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+            if(rc!= SQLITE_OK ){
+                fprintf(stderr, "SQL error: %s\n", zErrMsg);
+                sqlite3_free(zErrMsg);
+            }
+            else{
+                fprintf(stdout, "Records created successfully\n");
+            }
+            *returnP = xmlrpc_c::value_int(5);
+        }
 
-		void execute(xmlrpc_c::paramList const& paramList, const xmlrpc_c::callInfo * const callInfoP, xmlrpc_c::value* returnP){
-			sqlite3 *db;
-                	char *zErrMsg = 0;
-                	int rc;
-                	const char* sql;
-                	const char* data = "Callback function called";
-                	rc = sqlite3_open("test.db", &db);
-
-			if( rc ){ // opens DB
-                   		fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-                    		exit(0);
-                	}
-
-			else{
-				string sql_string = "INSERT INTO GAME VALUES (1, 'player1', 'Player', '" + players[0]->serialize() + "');";
-				//sql = sql_string.c_str();
-				rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
-
-				if(rc!= SQLITE_OK ){
-					fprintf(stderr, "SQL error: %s\n", zErrMsg);
-					sqlite3_free(zErrMsg);
-				}
-
-				else{
-					fprintf(stdout, "Records created successfully\n");
-				}
-
-				fprintf(stderr, "Opened database successfully\n");
-
-			}
-
-			int k = 5;
-                	vector<xmlrpc_c::value> array;
-                	array.push_back(xmlrpc_c::value_int(5));
-                	*returnP = xmlrpc_c::value_int(5);
-
-	}
 };
-
 
 class readHardState : public xmlrpc_c::method {
-	public:
-		readHardState(){}
-
-		void execute(xmlrpc_c::paramList const& paramList, const xmlrpc_c::callInfo * const callInfoP, xmlrpc_c::value* returnP){
-			sqlite3 *db;
-		        char *zErrMsg = 0;
-		        int rc;
-		        const char* sql;
-		        const char* data = "Callback function called";
-		        //rc = sqlite3_open("test.db", &db);
-			sql = "SELECT OBJECT_VALUE from GAME WHERE OBJECT_NAME='player1'";
-
-			rc = sqlite3_exec(db, sql, callback, (void*)data, &zErrMsg);
-			if ( rc != SQLITE_OK){
-				fprintf(stderr, "SQL error: %s\n", zErrMsg);
-				sqlite3_free(zErrMsg);
-			}
-
-			else{
-				fprintf(stdout, "Operation done successfully.\n");
-			}
-
-			int k = 5;
-                	vector<xmlrpc_c::value> array;
-                	array.push_back(xmlrpc_c::value_int(5));
-                	*returnP = xmlrpc_c::value_int(5);
-		}
-};
-
-
-
-
-
-class getGameInfo : public xmlrpc_c::method {
     public:
-        getGameInfo() {}
-        void
-            execute(xmlrpc_c::paramList const& paramList,
-                    xmlrpc_c::value *   const  retvalP) {
+        readHardState(){}
 
+        void execute(xmlrpc_c::paramList const& paramList, const xmlrpc_c::callInfo * const callInfoP, xmlrpc_c::value* returnP){
+            sqlite3 *db;
+            char *zErrMsg = 0;
+            int rc;
+            const char* sql;
+            const char* data = "Callback function called";
+            rc = sqlite3_open("test.db", &db);
+            if( rc ){
+                fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+                exit(0);
+            }else{
+                fprintf(stderr, "Opened database successfully\n");
             }
-};
+            //DEFINITELY WRONG:
+            sql = "SELECT OBJECT_VALUE from GAME WHERE OBJECT_NAME='player1'";
+            rc = sqlite3_exec(db, sql, callback, (void*)data, &zErrMsg);
+            if ( rc != SQLITE_OK){
+                fprintf(stderr, "SQL error: %s\n", zErrMsg);
+                sqlite3_free(zErrMsg);
+            }
+            else{
+                fprintf(stdout, "Operation done successfully.\n");
+            }
 
-class getPlayerInfo : public xmlrpc_c::method {
-    public:
-        getPlayerInfo () {
-            //initialize signature/help?
+            *returnP = xmlrpc_c::value_int(5);
         }
-        void
-            execute(xmlrpc_c::paramList const& paramList,
-                    //const xmlrpc_c::callInfo * const callInfoP,
-                    xmlrpc_c::value* returnP) {
-                Player* AI = new Player(false, "ROBOT");
-                Player* human = new Player(true, "Jesus");
-                sqlite3 *db;
-                char *zErrMsg = 0;
-                int rc;
-                const char* sql;
-                const char* data = "Callback function called";
-                rc = sqlite3_open("test.db", &db);
-                if( rc ){
-                    fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-                    exit(0);
-                }else{
-                    fprintf(stderr, "Opened database successfully\n");
-                    sql = "CREATE TABLE PLAYERS("  \
-                           "ID INT PRIMARY KEY     NOT NULL," \
-                           "position INT, points INT, isHuman INT, name VARCHAR(50), lastPlayed INT);"; //NEED TO ADD SCOREHAND AND HAND
-                }
-                rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
-                if( rc != SQLITE_OK ){
-                    fprintf(stderr, "SQL error: %s\n", zErrMsg);
-                    sqlite3_free(zErrMsg);
-                }else{
-                    fprintf(stdout, "Table created successfully\n");
-                }
-                //HOW TO INSERT PLAYER1 IN SECOND ROW???
-                //I could just read the dB from client to return this info...
-                sql = "INSERT INTO PLAYERS (position, points, isHuman, name, lastPlayed) "  \
-                //USE SERIALIZE FUNCTION IN VALUES COMMAND
-                       "VALUES (1, 'field1=position;field2=points;field3=isHuman;field4=name;field5=lastPlayed');";
-
-                rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
-                if( rc != SQLITE_OK ){
-                    fprintf(stderr, "SQL error: %s\n", zErrMsg);
-                    sqlite3_free(zErrMsg);
-                }else{
-                    fprintf(stdout, "Records created successfully\n");
-                }
-
-
-                int k = 5;
-                vector<xmlrpc_c::value> array;
-                array.push_back(xmlrpc_c::value_int(5));
-                *returnP = xmlrpc_c::value_int(5);
-                //*returnP = &array;
-                //xmlrpc_c::value *returnP(array);
-                //*returnP->push_back(xmlrpc_c::value_int(k));
-                //*returnP = xmlrpc_c::value_int(k);
-            }
 };
-//makeGame: Initializes game objects, creates database tables
-void makeGame(){
-    //PLAYERS ALREADY INITIALIZED, SO DON'T DO IT AGAIN IN MAIN
-    Player * AI = new Player(false, "ROBOT");
-    Player * human = new Player(true, "Jesus");
-    players[0] = human;
-    players[1] = AI;
-    dealerPos = 0;
-    pTurn = 1;
-
-    sqlite3 *db;
-    char *zErrMsg = 0;
-    int rc;
-    const char* sql;
+void getPlayer(int ID){
+    char IDent = ID;
+    char* sql;
     const char* data = "Callback function called";
     rc = sqlite3_open("test.db", &db);
     if( rc ){
@@ -556,61 +507,25 @@ void makeGame(){
         exit(0);
     }else{
         fprintf(stderr, "Opened database successfully\n");
-        sql = "CREATE TABLE GAME("
-            "ID INT PRIMARY KEY     NOT NULL,"   //UPDATE TABLE ARGUMENTS IF THEY DON'T MATCH HOW YOU SERIALIZE
-            "position INT, points INT, isHuman INT, name VARCHAR(50), lastPlayed INT);"; //NEED TO ADD SCOREHAND AND HAND }
-}
-rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
-if( rc != SQLITE_OK ){
-    fprintf(stderr, "SQL error: %s\n", zErrMsg);
-    sqlite3_free(zErrMsg);
-}else{
-    fprintf(stdout, "Table created successfully\n");
-}
-//MAKE PLAYERS TABLE HERE
-
-}
-
-vector<int> cardsToInts(vector<Card*> hand){
-    vector<int> convertedHand;
-    for(int i = 0; i < hand.size(); i++){
-        convertedHand.push_back((hand.at(i)->getSuit()-1)*13 + hand.at(i)->getPriority());
     }
-    return convertedHand;
+    sql = "SELECT playersID, points, isHuman, name, lastPlayed FROM PLAYERS WHERE playersID = ";
+    int length = strlen(sql);
+    char* sqlQuery = new char(length + 2);
+    strcpy(sqlQuery, sql);
+    sqlQuery[length] = IDent;
+    sqlQuery[length + 1] = ';';
+    rc = sqlite3_exec(db, sqlQuery, callback, (void*)data, &zErrMsg);
+    if( rc != SQLITE_OK ){
+        fprintf(stderr, "SQL error: %s\n", zErrMsg);
+        sqlite3_free(zErrMsg);
+    }else{
+        fprintf(stdout, "Operation done successfully\n");
+    }
+    cout << data << endl;
+
 }
 
-int cardToInt(Card* card){
-    return (card->getSuit() - 1) * 13 + card->getPriority();
-}
-vector<Card*> intsToCards(vector<int> hand){
-    vector<Card*> convertedHand;
-    int temp, priority, suit, value;
-    for(int i = 0; i < hand.size(); i++){
-        temp = hand.at(i);
-        priority = temp % 13;
-        value = temp % 13;
-        if(value > 10) {value = 10;}
-        if(temp > 0 && temp < 14) {suit = 1;}
-        if(temp > 13 && temp < 27){suit = 2;}
-        if(temp > 26 && temp < 40){suit = 3;}
-        if(temp > 39 && temp < 53){suit = 4;}
-        convertedHand.push_back(new Card(priority, suit, value));
-    }
-    return convertedHand;
-}
-Card* intToCard(int card){
-    Card* convertedCard;
-    int priority, suit, value;
-    priority = card % 13;
-    value = card % 13;
-    if(value > 10) {value = 10;}
-    if(card > 0 && card < 14) {suit = 1;}
-    if(card > 13 && card < 27){suit = 2;}
-    if(card > 26 && card < 40){suit = 3;}
-    if(card > 39 && card < 53){suit = 4;}
-    convertedCard = new Card(priority, suit, value);
-    return convertedCard;
-}
+//makeGame: Initializes game objects, creates database tables
 class AIDiscards : public xmlrpc_c::method {
     public:
         AIDiscards(){}
@@ -640,9 +555,9 @@ class prepPII : public xmlrpc_c::method {
         void
             execute(xmlrpc_c::paramList const& paramList,
                     xmlrpc_c::value* returnP) {
-               players[0]->scoreHand = players[0]->hand;
-               players[1]->scoreHand = players[1]->hand;
-               int phase = 2;
+                players[0]->scoreHand = players[0]->hand;
+                players[1]->scoreHand = players[1]->hand;
+                int phase = 2;
             }
 };
 
@@ -679,6 +594,7 @@ class phaseI : public xmlrpc_c::method {
             execute(xmlrpc_c::paramList const& paramList,
                     xmlrpc_c::value* returnP) {
                 srand(time(NULL));
+                getPlayer(0);
                 Deck * deck = new Deck();
                 Card * cut;
                 players[0]->hand = deck->dealCards();
@@ -705,6 +621,98 @@ class phaseI : public xmlrpc_c::method {
 
 };
 
+class getPlayerInfo : public xmlrpc_c::method {
+    public:
+        getPlayerInfo(){}
+        void
+            execute(xmlrpc_c::paramList const& paramList,
+                    xmlrpc_c::value* returnP) {
+                int const pID(paramList.getInt(0));
+                char ID = (char)(((int)'0') + pID);
+                fprintf(stdout, "PASSED ID: %i%c\n",pID, ID);
+                sqlite3_stmt *stmt;
+                sqlite3 *db;
+                char *zErrMsg = 0;
+                int rc;
+                char* sql;
+                string sqlTest;
+                const char* data = "Callback function called";
+                rc = sqlite3_open("test.db", &db);
+                if( rc ){ // opens DB
+                    fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+                    exit(0);
+                }else{
+                    fprintf(stderr, "Opened database successfully\n");
+                }
+                //sqlQuery = "SELECT points, isHuman, name, lastPlayed FROM GAME WHERE playerID = ;";
+                fprintf(stdout, "DOUBLE CHECK THIS VALUE: %c\n", ID);
+                sqlTest = "SELECT points, isHuman, lastPlayed FROM PLAYERS WHERE playerID = ";
+                sqlTest += ID;
+                sqlTest += ';';
+                fprintf(stdout, "sqlTest::::::::%s\n", sqlTest.c_str());
+                sql = new char[sqlTest.length() + 1];
+                strcpy(sql, sqlTest.c_str());
+
+                rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+                if( rc != SQLITE_OK){
+                    fprintf(stderr, "SELECT FAILED:%s\n ", sqlite3_errmsg(db));
+                }
+                int points, isHuman, lastPlayed;
+                while(sqlite3_step(stmt) == SQLITE_ROW){
+                    points = sqlite3_column_int(stmt,0);
+                    isHuman  = sqlite3_column_int(stmt,1);
+                    lastPlayed = sqlite3_column_int(stmt,2);
+                }
+                sqlite3_finalize(stmt);
+                vector<xmlrpc_c::value> gameData;
+                gameData.push_back(xmlrpc_c::value_int(points));
+                gameData.push_back(xmlrpc_c::value_int(isHuman));
+                gameData.push_back(xmlrpc_c::value_int(lastPlayed));
+                xmlrpc_c::value_array RAY(gameData);
+                *returnP = RAY;
+            }
+};
+//will return everything but cards
+class getGameInfo : public xmlrpc_c::method {
+    public:
+        getGameInfo(){}
+        void
+            execute(xmlrpc_c::paramList const& paramList,
+                    xmlrpc_c::value* returnP) {
+                sqlite3_stmt *stmt;
+                sqlite3 *db;
+                char *zErrMsg = 0;
+                int rc;
+                const char* sqlQuery;
+                const char* data = "Callback function called";
+                rc = sqlite3_open("test.db", &db);
+                if( rc ){ // opens DB
+                    fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+                    exit(0);
+                }else{
+                    fprintf(stderr, "Opened database successfully\n");
+                }
+
+                sqlQuery = "SELECT dealerPos, pTurn, phase FROM GAME;";
+                rc = sqlite3_prepare_v2(db, sqlQuery, -1, &stmt, NULL);
+                if( rc != SQLITE_OK){
+                    fprintf(stderr, "SELECT FAILED:%s\n ", sqlite3_errmsg(db));
+                }
+                int dealerPos, pTurn, phase; //Literally, what the fuck..
+                while(sqlite3_step(stmt) == SQLITE_ROW){
+                    dealerPos = sqlite3_column_int(stmt,0);
+                    pTurn  = sqlite3_column_int(stmt,1);
+                    phase = sqlite3_column_int(stmt,2);
+                }
+                sqlite3_finalize(stmt);
+                vector<xmlrpc_c::value> gameData;
+                gameData.push_back(xmlrpc_c::value_int(dealerPos));
+                gameData.push_back(xmlrpc_c::value_int(pTurn));
+                gameData.push_back(xmlrpc_c::value_int(phase));
+                xmlrpc_c::value_array RAY(gameData);
+                *returnP = RAY;
+            }
+};
 //NEED TO DOUBLE CHECK THIS IS HOW TO CHECK IF DATABASE IS EMPTY
 bool existingGame(){
     sqlite3 *dB;
@@ -720,7 +728,7 @@ int
 main(int           const,
         const char ** const) {
     /*
-       if(existingGame){
+       if(!existingGame){
     //readValues from dB and reinitialize values
     // Stub for now, but will read from dB to get these values
     Card* humanLPstub = new Card(1,4,1);
@@ -732,34 +740,19 @@ main(int           const,
     }
     else{
     //TABLES CREATED IN MAKE GAME; MAKE THEM CORRECT
-    makeGame(); //creates tables, initializes game objects
     }
     */
-    makeGame(); //creates tables, initializes game objects
-
-    /* CALL YOUR WRITE AND READ METHODS HERE!
-     * ./compile, then ./server to test
-     */
 
     try {
         xmlrpc_c::registry myRegistry;
-        xmlrpc_c::methodPtr const sampleRandMethodP(new sampleRandMethod);
-        myRegistry.addMethod("sample.rand", sampleRandMethodP);
-        /* Now add my Method */
         xmlrpc_c::methodPtr const getPlayerInfoP(new getPlayerInfo);
-        myRegistry.addMethod("define_players", getPlayerInfoP);
-
+        myRegistry.addMethod("getPlayerInfo", getPlayerInfoP);
         xmlrpc_c::methodPtr const phaseIP(new phaseI);
         myRegistry.addMethod("server.phaseI", phaseIP);
-
         xmlrpc_c::methodPtr const tellDiscardP(new tellDiscard);
         myRegistry.addMethod("tellDiscard", tellDiscardP);
-
-        //xmlrpc_c::methodPtr const writeHardStateP(new writeHardState);
-        //myRegistry.addMethod("writeHardState", writeHardStateP);
-
-        //xmlrpc_c::methodPtr const getGameInfoP(new getGameInfo);
-        //myRegistry.addMethod("getGameInfo", getGameInfoP);
+        xmlrpc_c::methodPtr const getGameInfoP(new getGameInfo);
+        myRegistry.addMethod("getGameInfo", getGameInfoP);
 
         xmlrpc_c::serverAbyss myAbyssServer(
                 xmlrpc_c::serverAbyss::constrOpt()
@@ -786,3 +779,77 @@ main(int           const,
           }else{
           fprintf(stdout, "Records created successfully\n");
           */
+
+/*
+   void makeGame(){
+//PLAYERS ALREADY INITIALIZED, SO DON'T DO IT AGAIN IN MAIN
+Player * AI = new Player(false, "ROBOT");
+Player * human = new Player(true, "Jesus");
+players[0] = human;
+players[1] = AI;
+dealerPos = 0;
+pTurn = 1;
+
+sqlite3 *db;
+char *zErrMsg = 0;
+int rc;
+const char* sql;
+const char* data = "Callback function called";
+rc = sqlite3_open("test.db", &db);
+if( rc ){
+fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+exit(0);
+}else{
+fprintf(stderr, "Opened database successfully\n");
+}
+sql = "CREATE TABLE HANDS("  \
+"handID INT PRIMARY KEY AUTOINCREMENT NOT NULL," \
+"cardID INT, pIndex INT, context INT);"; //NEED TO ADD SCOREHAND AND HAND
+rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+if( rc != SQLITE_OK ){
+fprintf(stderr, "SQL error: %s\n", zErrMsg);
+sqlite3_free(zErrMsg);
+}else{
+fprintf(stdout, "Table created successfully\n");
+}
+sql = "CREATE TABLE PLAYERS("
+"playersID INT PRIMARY KEY     NOT NULL, "
+"points INT NOT NULL, isHuman BOOLEAN, name TEXT, lastPlayed INT,"
+"hand INT, FOREIGN KEY(hand) REFERENCES hand(handID), "
+"scoreHand INT, FOREIGN KEY(scoreHand) REFERENCES hand(handID));"; //NEED TO ADD SCOREHAND AND HAND
+rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+if( rc != SQLITE_OK ){
+fprintf(stderr, "SQL error: %s\n", zErrMsg);
+sqlite3_free(zErrMsg);
+}else{
+fprintf(stdout, "Table created successfully\n");
+}
+//THINK ABOUT WHAT THESE FIELDS SHOULD BE
+sql = "CREATE TABLE GAME("
+"ID INT PRIMARY KEY AUTOINCREMENT    NOT NULL, "   //UPDATE TABLE ARGUMENTS IF THEY DON'T MATCH HOW YOU SERIALIZE
+"dealerPos INT NOT NULL, phase INT, player0 INT, FOREIGN KEY (player0) REFERENCES PLAYERS(playersID), "
+"player1 INT, FOREIGN KEY (player1) REFERENCES PLAYERS(playersID), "
+"crib INT, FOREIGN KEY(crib) REFERENCES hands(handsID));"; //NEED TO ADD SCOREHAND AND HAND }
+rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+if( rc != SQLITE_OK ){
+fprintf(stderr, "SQL error: %s\n", zErrMsg);
+sqlite3_free(zErrMsg);
+}else{
+fprintf(stdout, "Table created successfully\n");
+}
+
+sql = "INSERT INTO GAME (ID, dealerPos, phase, player0, player1, crib) " \
+"VALUES (NULL, 0, 1, 0, 1, 2);" \
+"INSERT INTO PLAYERS (playersID, points, isHuman, name, lastPlayed, hand, scoreHand)"\
+"VALUES (0, 0, true, 'Jesus', 0, 0, 1);" \
+"INSERT INTO PLAYERS (playersID, points, isHuman, name, lastPlayed, hand, scoreHand)"\
+"VALUES (1, 0, false, 'ROBOT', 0, 0, 1);";
+rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+if( rc != SQLITE_OK ){
+fprintf(stderr, "SQL error: %s\n", zErrMsg);
+sqlite3_free(zErrMsg);
+}else{
+fprintf(stdout, "Wrote initial game state successfully\n");
+}
+}
+*/

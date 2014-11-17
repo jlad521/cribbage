@@ -17,7 +17,6 @@
 #include "ShowCribbage.h"
 #define WINNING 61
 //#include "client.h"
-Player* players[2];
 class clientConnection{
     private:
         static bool instanceFlag;
@@ -27,6 +26,8 @@ class clientConnection{
         vector<int> phaseI();
         void tellDiscard(int, int, int);
         void writeHardState();
+        vector<int> getGameInfo();
+        vector<int> getPlayerInfo(int);
         static clientConnection* createInstance();
         ~clientConnection() { instanceFlag = false;}
 };
@@ -98,6 +99,56 @@ void clientConnection::writeHardState(/* DOES IT NEED ANY INPUTS?? */){
         sleep(6000);
     }
 }
+
+vector<int> clientConnection::getGameInfo(/* DOES IT NEED ANY INPUTS?? */){
+    vector<int> info;
+    try{
+        xmlrpc_c::clientSimple myClient;// = new(xmlrpc_c::clientSimple);
+        xmlrpc_c::value value;
+        string const serverUrl("http://localhost:8080/RPC2");
+        string const getGameInfo("getGameInfo");
+        myClient.call(serverUrl, getGameInfo, &value);
+
+        xmlrpc_c::value_array arrr(value);
+        vector<xmlrpc_c::value> const gameInfo(arrr.vectorValueValue());
+        info.push_back(xmlrpc_c::value_int(gameInfo.at(0)));
+        info.push_back(xmlrpc_c::value_int(gameInfo.at(1)));
+        info.push_back(xmlrpc_c::value_int(gameInfo.at(2)));
+
+    } catch (exception const& e) {
+        cerr << "Client threw error: " << e.what() << endl;
+        sleep(6000);
+    } catch (...) {
+        cerr << "Client threw unexpected error." << endl;
+        sleep(6000);
+    }
+    return info;
+}
+
+vector<int> clientConnection::getPlayerInfo(int pID){
+    vector<int> info;
+    try{
+        xmlrpc_c::clientSimple myClient;// = new(xmlrpc_c::clientSimple);
+        xmlrpc_c::value value;
+        string const serverUrl("http://localhost:8080/RPC2");
+        string const getPlayerInfo("getPlayerInfo");
+        myClient.call(serverUrl, getPlayerInfo, "i", &value, pID);
+
+        xmlrpc_c::value_array arrr(value);
+        vector<xmlrpc_c::value> const gameInfo(arrr.vectorValueValue());
+        info.push_back(xmlrpc_c::value_int(gameInfo.at(0)));
+        info.push_back(xmlrpc_c::value_int(gameInfo.at(1)));
+        info.push_back(xmlrpc_c::value_int(gameInfo.at(2)));
+
+    } catch (exception const& e) {
+        cerr << "Client threw error: " << e.what() << endl;
+        sleep(6000);
+    } catch (...) {
+        cerr << "Client threw unexpected error." << endl;
+        sleep(6000);
+    }
+    return info;
+}
 /**********************************************************************************************/
 
 vector<Card*> crib;
@@ -105,7 +156,7 @@ int dealerPos, pTurn, phase; // I'm sure there'll be more
 clientConnection *myClient;
 Card* cut = new Card();
 Card* storeCut = new Card();
-
+Player* players[2];
 vector<int> cardsToInts(vector<Card*> hand){
     vector<int> convertedHand;
     for(int i = 0; i < hand.size(); i++){
@@ -342,6 +393,17 @@ void phaseI(/*ShowCribbage * display*/){
 //INITIALIZE GAME WILL CALL: READHARDSTATE, WHICH GETS ALL INFO FROM SERVER
 void initializeGame(){
     myClient = clientConnection::createInstance();
+    vector<int> gameInfo;
+    vector<int> p0Info;
+    vector<int> p1Info;
+    gameInfo = myClient->getGameInfo();
+    p0Info = myClient->getPlayerInfo(0);
+    p1Info = myClient->getPlayerInfo(1);
+    cout << "Wait.. I did it??" << gameInfo.at(0) << gameInfo.at(1) << gameInfo.at(2) << endl;
+    cout << "p0 info: " << p0Info.at(0) << p0Info.at(1) << p0Info.at(2) << endl;
+    cout << "p1 info: " << p1Info.at(0) << p1Info.at(1) << p1Info.at(2) << endl;
+    //myClient->getPlayerInfo(0)
+    //myClient->getPlayerInfo(1)
     Player * human = new Player(/*getPlayerIno*/true, "Jesus");
     Player * AI = new Player(/*getPlayerInfo*/false, "ROBOT");
     //Player* players[2];
@@ -374,12 +436,13 @@ int main(int argc, char* argv[]){
     initializeGame();
     //ShowCribbage * display = new ShowCribbage();
     phase = 1;
+/*
     while(players[0]->getPoints() < WINNING && players[1]->getPoints() < WINNING){
         if(phase == 1) phaseI();
         if(phase == 2) phaseII();
         if(phase == 3) phaseIII();
     }
-
+*/
     return 0;
 }
 

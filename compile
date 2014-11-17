@@ -1,3 +1,4 @@
+sqlite3 test.db < reset.sql
 DIR=`pwd`
 g++ -g -c -I. -I$DIR/include -I$DIR/include display.cpp -o display.o
 g++ -g -c -I. -I$DIR/include -I$DIR/include Card.cpp -o Card.o

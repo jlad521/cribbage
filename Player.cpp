@@ -58,16 +58,16 @@ int Player::getPosition(){
 
 string Player::serialize(){
  	ostringstream stringStreamVal;
-	stringStreamVal << "var1" << position << "; var2=" << points << ";var3=" << isHuman << ";";
+	stringStreamVal << "var1" << position << "; var2=" << points << ";var3=" << isHuman << ";var4=" << name <<  ";";
 	return stringStreamVal.str();
 }
 
 void Player::reset(string serial){
-	string delimiter = ";";	  
+	string delimiter = ";";
         string delimiter2 = "=";
 	string token, token2, token3;
 	int position = 0, position2 = 0;
-        
+
 	while ((position = serial.find(delimiter)) != -1) {
         	token = serial.substr(0, position);
             	position2 = token.find(delimiter2);
@@ -76,19 +76,19 @@ void Player::reset(string serial){
 	    	if (token2 == "position") {
 			position = atoi(token3.c_str());
 		}
- 
+
 		else if (token2 == "points") {
 			points = atoi(token3.c_str());
 	    	}
- 
+
 		else if (token2 == "isHuman") {
 			isHuman = atoi(token3.c_str());
-	    	} 
+	    	}
 
 		else {
 		cout << "error" << endl;
 	    	}
-            	
+
 		serial.erase(0, position + delimiter.length());
 	}
 }
