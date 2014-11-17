@@ -438,29 +438,6 @@ class writeNewGame : public xmlrpc_c::method {
     public:
         writeNewGame(){}
         void execute(xmlrpc_c::paramList const& paramList, const xmlrpc_c::callInfo * const callInfoP, xmlrpc_c::value* returnP){
-            sqlite3 *db;
-            char *zErrMsg = 0;
-            int rc;
-            const char* sql;
-            const char* data = "Callback function called";
-            rc = sqlite3_open("test.db", &db);
-            if( rc ){ // opens DB
-                fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-                exit(0);
-            }else{
-                fprintf(stderr, "Opened database successfully\n");
-            }
-            sql = "INSERT INTO GAME(ID, position, points, isHuman, name, lastPlayed, phase, crib)"
-                "VALUES (1, )";
-            //"VALUES (1, 'player1', 'Player', '" + players[0]->serialize() + "');";
-            rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
-            if(rc!= SQLITE_OK ){
-                fprintf(stderr, "SQL error: %s\n", zErrMsg);
-                sqlite3_free(zErrMsg);
-            }
-            else{
-                fprintf(stdout, "Records created successfully\n");
-            }
             *returnP = xmlrpc_c::value_int(5);
         }
 
@@ -540,6 +517,40 @@ vector<int> getCards(int pIndex, int contxt){
     return cardInfo;
 }
 */
+//string toSqlWord()
+void writeCards(int pIndex, int context, vector<int> cards){
+    sqlite3 *db;
+    char *zErrMsg = 0;
+    int rc;
+    const char* sql;
+    const char* data = "Callback function called";
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
+    string currentCard;
+    char buffer[20];
+    for(int i = 0; i<cards.size(); i++){
+        sprintf(buffer, "%i, %i, %i", pIndex, context, cards.at(i));
+        //WORK ON CONCATINATING STRING:::::
+        //currentCard = "INSERT INTO HANDS(cardID, pIndex, context)" \
+                      "VALUES ( " + buffer + ");" ;
+        sql = currentCard.c_str();
+        //"VALUES (1, 'player1', 'Player', '" + players[0]->serialize() + "');";
+        rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+        if(rc!= SQLITE_OK ){
+            fprintf(stderr, "SQL error: %s\n", zErrMsg);
+            sqlite3_free(zErrMsg);
+        }
+        else{
+            fprintf(stdout, "Records created successfully\n");
+        }
+    }
+}
+
 vector<int> getPlayer(int IDent){
     vector<int> playerInfo;
     char ID = (char)(((int)'0') + IDent);
