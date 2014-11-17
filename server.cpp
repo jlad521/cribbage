@@ -497,32 +497,88 @@ class readHardState : public xmlrpc_c::method {
             *returnP = xmlrpc_c::value_int(5);
         }
 };
-void getPlayer(int ID){
-    char IDent = ID;
+/*
+vector<int> getCards(int pIndex, int contxt){
+    vector<int> cardInfo;
+    char pOwner = (char)(((int)'0') + pIndex);
+    char context = (char)(((int)'0') + contxt);
+    sqlite3_stmt *stmt;
+    sqlite3 *db;
+    char *zErrMsg = 0;
+    int rc;
     char* sql;
+    string sqlQuery;
     const char* data = "Callback function called";
     rc = sqlite3_open("test.db", &db);
-    if( rc ){
+    if( rc ){ // opens DB
         fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
         exit(0);
     }else{
         fprintf(stderr, "Opened database successfully\n");
     }
-    sql = "SELECT playersID, points, isHuman, name, lastPlayed FROM PLAYERS WHERE playersID = ";
-    int length = strlen(sql);
-    char* sqlQuery = new char(length + 2);
-    strcpy(sqlQuery, sql);
-    sqlQuery[length] = IDent;
-    sqlQuery[length + 1] = ';';
-    rc = sqlite3_exec(db, sqlQuery, callback, (void*)data, &zErrMsg);
+    sqlQuery = "SELECT points, isHuman, lastPlayed FROM PLAYERS WHERE playerID = ";
+    sqlQuery += ID;
+    sqlQuery += ';';
+    sql = new char[sqlQuery.length() + 1];
+    strcpy(sql, sqlQuery.c_str());
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if( rc != SQLITE_OK){
+        fprintf(stderr, "SELECT FAILED:%s\n ", sqlite3_errmsg(db));
+    }
+    while(sqlite3_step(stmt) == SQLITE_ROW){
+        cardInfo.push_back(sqlite3_column_int(stmt,0));
+        cardInfo.push_back(sqlite3_column_int(stmt,1));
+        cardInfo.push_back(sqlite3_column_int(stmt,2));
+    }
+    sqlite3_finalize(stmt);
     if( rc != SQLITE_OK ){
         fprintf(stderr, "SQL error: %s\n", zErrMsg);
         sqlite3_free(zErrMsg);
     }else{
         fprintf(stdout, "Operation done successfully\n");
     }
-    cout << data << endl;
-
+    return cardInfo;
+}
+*/
+vector<int> getPlayer(int IDent){
+    vector<int> playerInfo;
+    char ID = (char)(((int)'0') + IDent);
+    sqlite3_stmt *stmt;
+    sqlite3 *db;
+    char *zErrMsg = 0;
+    int rc;
+    char* sql;
+    string sqlTest;
+    const char* data = "Callback function called";
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
+    sqlTest = "SELECT points, isHuman, lastPlayed FROM PLAYERS WHERE playerID = ";
+    sqlTest += ID;
+    sqlTest += ';';
+    sql = new char[sqlTest.length() + 1];
+    strcpy(sql, sqlTest.c_str());
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if( rc != SQLITE_OK){
+        fprintf(stderr, "SELECT FAILED:%s\n ", sqlite3_errmsg(db));
+    }
+    while(sqlite3_step(stmt) == SQLITE_ROW){
+        playerInfo.push_back(sqlite3_column_int(stmt,0));
+        playerInfo.push_back(sqlite3_column_int(stmt,1));
+        playerInfo.push_back(sqlite3_column_int(stmt,2));
+    }
+    sqlite3_finalize(stmt);
+    if( rc != SQLITE_OK ){
+        fprintf(stderr, "SQL error: %s\n", zErrMsg);
+        sqlite3_free(zErrMsg);
+    }else{
+        fprintf(stdout, "Operation done successfully\n");
+    }
+    return playerInfo;
 }
 
 //makeGame: Initializes game objects, creates database tables
@@ -587,6 +643,8 @@ class tellDiscard : public xmlrpc_c::method {
             }
 };
 
+
+
 class phaseI : public xmlrpc_c::method {
     public:
         phaseI(){}
@@ -595,9 +653,11 @@ class phaseI : public xmlrpc_c::method {
                     xmlrpc_c::value* returnP) {
                 srand(time(NULL));
                 getPlayer(0);
+
                 Deck * deck = new Deck();
                 Card * cut;
                 players[0]->hand = deck->dealCards();
+                //writeHand(pIndex,vector<int>)
                 //players[0]->scoreHand = players[0]->hand;
                 players[1]->hand = deck->dealCards();
                 //players[1]->scoreHand = players[1]->hand;
@@ -628,46 +688,12 @@ class getPlayerInfo : public xmlrpc_c::method {
             execute(xmlrpc_c::paramList const& paramList,
                     xmlrpc_c::value* returnP) {
                 int const pID(paramList.getInt(0));
-                char ID = (char)(((int)'0') + pID);
-                fprintf(stdout, "PASSED ID: %i%c\n",pID, ID);
-                sqlite3_stmt *stmt;
-                sqlite3 *db;
-                char *zErrMsg = 0;
-                int rc;
-                char* sql;
-                string sqlTest;
-                const char* data = "Callback function called";
-                rc = sqlite3_open("test.db", &db);
-                if( rc ){ // opens DB
-                    fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-                    exit(0);
-                }else{
-                    fprintf(stderr, "Opened database successfully\n");
-                }
-                //sqlQuery = "SELECT points, isHuman, name, lastPlayed FROM GAME WHERE playerID = ;";
-                fprintf(stdout, "DOUBLE CHECK THIS VALUE: %c\n", ID);
-                sqlTest = "SELECT points, isHuman, lastPlayed FROM PLAYERS WHERE playerID = ";
-                sqlTest += ID;
-                sqlTest += ';';
-                fprintf(stdout, "sqlTest::::::::%s\n", sqlTest.c_str());
-                sql = new char[sqlTest.length() + 1];
-                strcpy(sql, sqlTest.c_str());
-
-                rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
-                if( rc != SQLITE_OK){
-                    fprintf(stderr, "SELECT FAILED:%s\n ", sqlite3_errmsg(db));
-                }
-                int points, isHuman, lastPlayed;
-                while(sqlite3_step(stmt) == SQLITE_ROW){
-                    points = sqlite3_column_int(stmt,0);
-                    isHuman  = sqlite3_column_int(stmt,1);
-                    lastPlayed = sqlite3_column_int(stmt,2);
-                }
-                sqlite3_finalize(stmt);
+                vector<int> playerInfo;
+                playerInfo = getPlayer(pID);
                 vector<xmlrpc_c::value> gameData;
-                gameData.push_back(xmlrpc_c::value_int(points));
-                gameData.push_back(xmlrpc_c::value_int(isHuman));
-                gameData.push_back(xmlrpc_c::value_int(lastPlayed));
+                gameData.push_back(xmlrpc_c::value_int(playerInfo.at(0)));
+                gameData.push_back(xmlrpc_c::value_int(playerInfo.at(1)));
+                gameData.push_back(xmlrpc_c::value_int(playerInfo.at(2)));
                 xmlrpc_c::value_array RAY(gameData);
                 *returnP = RAY;
             }

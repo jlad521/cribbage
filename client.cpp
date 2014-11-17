@@ -185,6 +185,10 @@ vector<Card*> intsToCards(vector<int> hand){
     return convertedHand;
 }
 Card* intToCard(int card){
+    if(card == 0) {
+        Card* c = new Card();
+        return c;
+    }
     Card* convertedCard;
     int priority, suit, value;
     priority = card % 13;
@@ -349,7 +353,7 @@ void phaseI(/*ShowCribbage * display*/){
         p1Cards.push_back(intToCard(dealtCards.at(k)));
         cout << "Card: " << p1Cards.back()->getPriority() << " " <<endl;
     }
-        cout << "cutCard: " << intToCard(dealtCards.at(12))->getPriority() << " " <<endl;
+    cout << "cutCard: " << intToCard(dealtCards.at(12))->getPriority() << " " <<endl;
     storeCut = intToCard(dealtCards.at(12));
     players[0]->hand = p0Cards;
     players[1]->hand = p1Cards;
@@ -393,7 +397,7 @@ void phaseI(/*ShowCribbage * display*/){
 //INITIALIZE GAME WILL CALL: READHARDSTATE, WHICH GETS ALL INFO FROM SERVER
 void initializeGame(){
     myClient = clientConnection::createInstance();
-    vector<int> gameInfo;
+    vector<int> gameInfo; //dealerPos, pTurn, phase
     vector<int> p0Info;
     vector<int> p1Info;
     gameInfo = myClient->getGameInfo();
@@ -402,20 +406,19 @@ void initializeGame(){
     cout << "Wait.. I did it??" << gameInfo.at(0) << gameInfo.at(1) << gameInfo.at(2) << endl;
     cout << "p0 info: " << p0Info.at(0) << p0Info.at(1) << p0Info.at(2) << endl;
     cout << "p1 info: " << p1Info.at(0) << p1Info.at(1) << p1Info.at(2) << endl;
-    //myClient->getPlayerInfo(0)
-    //myClient->getPlayerInfo(1)
-    Player * human = new Player(/*getPlayerIno*/true, "Jesus");
-    Player * AI = new Player(/*getPlayerInfo*/false, "ROBOT");
+    bool isHmn = (p0Info.at(1) != 0);
+    bool isAHmn = (p1Info.at(1) != 0);
+    Player * human = new Player(0, p0Info.at(0),  isHmn, intToCard(p0Info.at(2)));
+    Player * AI = new Player(1, p1Info.at(0),  isAHmn, intToCard(p1Info.at(2)));
     //Player* players[2];
     players[0] = human;
     players[1] = AI;
-    dealerPos = 0; //should randomly generate
-    pTurn = 1;
-    phase = 1;
+    dealerPos = gameInfo.at(0);
+    pTurn = gameInfo.at(1);
+    phase = gameInfo.at(2);
 
-    //myClient->call(serverUrl,phaseI,&resultHand);
-    //xmlrpc_c::value_array handFromServer(resultHand);
-    //vector<xmlrpc_c::value> const dealtHand(handFromServer);
+    //HAVE TO GETCARDS FOR CRIB, PLAYER HANDS, ETC
+
     /*
        while(players[0]->getPoints() < WINNING && players[1]->getPoints() < WINNING){
        playRound(players, display);
@@ -435,14 +438,13 @@ void initializeGame(){
 int main(int argc, char* argv[]){
     initializeGame();
     //ShowCribbage * display = new ShowCribbage();
-    phase = 1;
-/*
+    phase = 0;
     while(players[0]->getPoints() < WINNING && players[1]->getPoints() < WINNING){
         if(phase == 1) phaseI();
         if(phase == 2) phaseII();
         if(phase == 3) phaseIII();
     }
-*/
+
     return 0;
 }
 

@@ -9,7 +9,7 @@ using namespace std;
 class Player{
     public:
         Player(bool, string);
-        Player(int, int, bool, string, Card*); //NEED TO INCLUDE HANDS
+        Player(int, int, bool, Card*); //NEED TO INCLUDE HANDS
         vector<Card*> hand;
         vector<Card*> scoreHand;
         Card* lastCard;
