@@ -29,6 +29,7 @@ class clientConnection{
         vector<int> getGameInfo();
         vector<int> getPlayerInfo(int);
         vector<int> readCards(int, int);
+        void prepPII();
         static clientConnection* createInstance();
         ~clientConnection() { instanceFlag = false;}
 };
@@ -66,6 +67,22 @@ void clientConnection::tellDiscard(int pIndex, int cIndex, int cardNum){
         string const serverUrl("http://localhost:8080/RPC2");
         string const tellDiscard("tellDiscard");
         myClient.call(serverUrl, tellDiscard, "iii", &nothing, pIndex, cIndex, cardNum);
+    } catch (exception const& e) {
+        cerr << "Client threw error: " << e.what() << endl;
+        sleep(6000);
+    } catch (...) {
+        cerr << "Client threw unexpected error." << endl;
+        sleep(6000);
+    }
+}
+
+void clientConnection::prepPII(){
+    try{
+        xmlrpc_c::clientSimple myClient;// = new(xmlrpc_c::clientSimple);
+        xmlrpc_c::value nothing;
+        string const serverUrl("http://localhost:8080/RPC2");
+        string const prepPII("prepPII");
+        myClient.call(serverUrl, prepPII, &nothing);
     } catch (exception const& e) {
         cerr << "Client threw error: " << e.what() << endl;
         sleep(6000);
@@ -367,8 +384,7 @@ void phaseI(/*ShowCribbage * display*/){
     int gophase = 0;
     int selected;
 
-
-    /*Discard 1st human card */
+    /*Discard human cards */
     while(players[0]->hand.size() > 4){
     //selected = display->getCard(players[0], 1, gophase); //getCard only allows a valid card to be played (play game to see)
     selected = 1;
@@ -377,21 +393,16 @@ void phaseI(/*ShowCribbage * display*/){
     players[0]->hand.erase(players[0]->hand.begin()+selected);
     //display->drawCards(players, cut, 1, 0, true, crib, dealerPos, 0, 0);
     }
-    /*Discard 2nd human card */
-    //selected = display->getCard(players[0], 1, gophase);
-    /*
-    selected = 3;
     crib.push_back(players[0]->hand.at(selected));
     myClient->tellDiscard(0, selected,cardToInt(players[0]->hand.at(selected))); //add discarded cards to crib);
     players[0]->hand.erase(players[0]->hand.begin()+selected);
     //display->drawCards(players, cut, 1, 0, true, crib, dealerPos,  0, 0);
-    */
     //WRITE A METHOD THAT DOES THIS ON SERVER
     //prepP2
     players[0]->scoreHand = players[0]->hand; //update scoring hand with card chosen
 
     //myClient->AICards();//
-
+    myClient->prepPII();
     /*Discard AI cards on client; can get away with this because client and server will always discard last card in array */
     crib.push_back(players[1]->hand.back());
     players[1]->hand.pop_back(); //remove card from hand

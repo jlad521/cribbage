@@ -535,6 +535,36 @@ int getDealerPos(){
     }
     return dealerPos;
 }
+void updatePhase(int p){
+    sqlite3 *db;
+    char *zErrMsg = 0;
+    int rc;
+    const char* sql;
+    const char* data = "Callback function called";
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
+    string currentCard;
+    char buffer[20];
+    sprintf(buffer, "%i ;", p);
+    currentCard = "UPDATE GAME SET phase = ";
+    currentCard.append(buffer);
+    fprintf(stdout, "update cut card query: %s\n", currentCard.c_str());
+    sql = currentCard.c_str();
+    //"VALUES (1, 'player1', 'Player', '" + players[0]->serialize() + "');";
+    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+    if(rc!= SQLITE_OK ){
+        fprintf(stderr, "SQL error: %s\n", zErrMsg);
+        sqlite3_free(zErrMsg);
+    }
+    else{
+        fprintf(stdout, "Records created successfully\n");
+    }
+}
 
 void updateCut(int cardNum){
     sqlite3 *db;
@@ -582,9 +612,9 @@ void removeCard(int pIndex, int context, int cardNum){
         fprintf(stderr, "Opened database successfully\n");
     }
     string currentQuery;
-    char buffer[20];
+    char buffer[50];
     sprintf(buffer, "%i AND context = %i AND cardID = %i;", pIndex, context, cardNum);
-    currentQuery = "DELETE FROM HANDS WHERE pIndex =";
+    currentQuery = "DELETE FROM HANDS WHERE pIndex = ";
     currentQuery.append(buffer);
     fprintf(stdout, "removeCard query: %s\n", currentQuery.c_str());
     sql = currentQuery.c_str();
@@ -597,6 +627,7 @@ void removeCard(int pIndex, int context, int cardNum){
         fprintf(stdout, "Records created successfully\n");
     }
 }
+
 void writeCards(int pIndex, int context, vector<int> cards){
     sqlite3 *db;
     char *zErrMsg = 0;
@@ -688,6 +719,7 @@ class AIDiscards : public xmlrpc_c::method {
                 *returnP = xmlrpc_c::value_int(5);
             }
 };
+
 class phaseIIturn : public xmlrpc_c::method {
     public:
         phaseIIturn(){}
@@ -704,12 +736,19 @@ class prepPII : public xmlrpc_c::method {
         void
             execute(xmlrpc_c::paramList const& paramList,
                     xmlrpc_c::value* returnP) {
-                players[0]->scoreHand = players[0]->hand;
-                players[1]->scoreHand = players[1]->hand;
-                int phase = 2;
+                //discard AI Cards
+                vector<int> AICards = getCards(1,0);
+                removeCard(1,0, AICards.back());
+                AICards.pop_back();
+                removeCard(1,0, AICards.back());
+                AICards.pop_back();
+                //write scoreHands
+                writeCards(0,1,getCards(0,0));
+                writeCards(1,1,getCards(1,0));
+                updatePhase(2);
+                *returnP = xmlrpc_c::value_int(-1);
             }
 };
-
 
 class tellDiscard : public xmlrpc_c::method {
     public:
@@ -721,22 +760,11 @@ class tellDiscard : public xmlrpc_c::method {
                 int const cIndex(paramList.getInt(1));
                 int const cardNum(paramList.getInt(2));
                 paramList.verifyEnd(3);
+                fprintf(stdout, "I FUCK UP HERE:");
                 removeCard(pIndex, cIndex, cardNum);
-                //crib.push_back(intToCard(cardNum));
-                for(int k = 0; k < players[pIndex]->hand.size(); k++){
-                    cout << "player cards before: " << players[pIndex]->hand.at(k)->getPriority() << " " <<endl;
-                }
-                players[pIndex]->hand.erase(players[pIndex]->hand.begin()+cIndex);
-                cout << " --------------------------------- " << endl;
-
-                for(int i = 0; i < players[pIndex]->hand.size(); i++){
-                    cout << "player cards before: " << players[pIndex]->hand.at(i)->getPriority() << " " <<endl;
-                }
                 *returnP = xmlrpc_c::value_int(5);
             }
 };
-
-
 
 class phaseI : public xmlrpc_c::method {
     public:
@@ -758,7 +786,6 @@ class phaseI : public xmlrpc_c::method {
                 if(cutCardNum % 13 == 11) {
                     updatePlayerPoints(dPos, 2);
                 }
-
                 delete deck;
                 *returnP = xmlrpc_c::value_int(5);
             }
@@ -907,6 +934,8 @@ main(int           const,
         myRegistry.addMethod("getGameInfo", getGameInfoP);
         xmlrpc_c::methodPtr const readCardsP(new readCards);
         myRegistry.addMethod("readCards", readCardsP);
+        xmlrpc_c::methodPtr const prepPIIP(new prepPII);
+        myRegistry.addMethod("prepPII", prepPIIP);
 
         xmlrpc_c::serverAbyss myAbyssServer(
                 xmlrpc_c::serverAbyss::constrOpt()
