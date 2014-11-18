@@ -27,6 +27,7 @@
         dealerPos INTEGER NOT NULL,
         pTurn INTEGER NOT NULL,
         phase INTEGER NOT NULL,
+        goNumber INTEGER NOT NULL,
         cutCard INTEGER NOT NULL,
         p0 INTEGER NOT NULL,
         p1 INTEGER NOT NULL, 
@@ -36,8 +37,8 @@
         FOREIGN KEY (p1) REFERENCES PLAYERS(playerID) 
     );
 
-    INSERT INTO GAME (ID, dealerPos, pTurn, phase, cutCard, p0, p1, crib) 
-    VALUES (NULL, 0, 1, 1, 0, 0, 1, 2);
+    INSERT INTO GAME (ID, dealerPos, pTurn, phase, goNumber, cutCard, p0, p1, crib) 
+    VALUES (NULL, 0, 1, 1, 0, 0, 0, 1, 2);
     INSERT INTO PLAYERS (playerID, points, isHuman, name, lastPlayed, hand, scoreHand)
     VALUES (0, 0, 1, 'Jesus', 0, 0, 1);
     INSERT INTO PLAYERS (playerID, points, isHuman, name, lastPlayed, hand, scoreHand)

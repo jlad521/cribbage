@@ -28,7 +28,7 @@ ShowCribbage::ShowCribbage(){
     //anything else?
 }
 //If time, rewrite into 3 functions
-void  ShowCribbage::drawCards(Player* players[], Card* cutCard, int phase, int goPhaseNumber, bool isCrib, vector<Card*> crib, int dealerPos, int apoints, int hpoints){
+void  ShowCribbage::drawPII(Player* players[], Card* cutCard, int phase, int goPhaseNumber, bool isCrib, int dealerPos){
     /*Code below is always displayed, irrespective of phase */
     key = gameDisplay.captureInput();
     //NEED TO USE GET COLS AND GET WIDTH TO DRAW BOX. ALSO INCLUDE RESCALE FUNCTIONALITY
@@ -65,30 +65,29 @@ void  ShowCribbage::drawCards(Player* players[], Card* cutCard, int phase, int g
         gameDisplay.displayCard(xlp,hlpy, players[0]->lastCard->getSuit(), players[0]->lastCard->getPriority(), A_BOLD);
         gameDisplay.displayCard(xlp,AIlpy, players[1]->lastCard->getSuit(), players[1]->lastCard->getPriority(), A_BOLD);
     }
+}
 
-    if(phase == 3){
-        messageStringTop.str("");
-        messageStringTop << players[1]->name << ": " << players[1]->getPoints() <<  "           " << players[1]->name << " scores " << apoints << " points with that hand. Click to begin next round";
-        gameDisplay.bannerTop(messageStringTop.str());
-        messageStringBottom.str("");
-        messageStringBottom << players[0]->name << ": " << players[0]->getPoints() <<  "           " << players[0]->name << " scores " << hpoints << " points with that hand.";
-        gameDisplay.bannerBottom(messageStringBottom.str());
-        for(int s = 0; s < crib.size(); s++){
-            gameDisplay.displayCard(xStart, yMsg, crib.at(s)->getSuit(), crib.at(s)->getPriority(), A_BOLD); //show facedown card as deck; draw another card over it if cutCard has been cut
-            xStart+= inc;
-        }xStart = 20;
+void ShowCribbage::drawPIII(Player* players[], vector<Card*> crib, int apoints, int hpoints){
+    messageStringTop.str("");
+    messageStringTop << players[1]->name << ": " << players[1]->getPoints() <<  "           " << players[1]->name << " scores " << apoints << " points with that hand. Click to begin next round";
+    gameDisplay.bannerTop(messageStringTop.str());
+    messageStringBottom.str("");
+    messageStringBottom << players[0]->name << ": " << players[0]->getPoints() <<  "           " << players[0]->name << " scores " << hpoints << " points with that hand.";
+    gameDisplay.bannerBottom(messageStringBottom.str());
+    for(int s = 0; s < crib.size(); s++){
+        gameDisplay.displayCard(xStart, yMsg, crib.at(s)->getSuit(), crib.at(s)->getPriority(), A_BOLD); //show facedown card as deck; draw another card over it if cutCard has been cut
+        xStart+= inc;
+    }xStart = 20;
 
-        for(int j = 0; j < players[0]->scoreHand.size(); j++){
-            gameDisplay.displayCard(xStart, humanY, players[0]->scoreHand.at(j)->getSuit(), players[0]->scoreHand.at(j)->getPriority(), A_BOLD); //show facedown card as deck; draw another card over it if cutCard has been cut
-            xStart+= inc;
-        }xStart = 20;
+    for(int j = 0; j < players[0]->scoreHand.size(); j++){
+        gameDisplay.displayCard(xStart, humanY, players[0]->scoreHand.at(j)->getSuit(), players[0]->scoreHand.at(j)->getPriority(), A_BOLD); //show facedown card as deck; draw another card over it if cutCard has been cut
+        xStart+= inc;
+    }xStart = 20;
 
-        for(int z = 0; z < players[1]->scoreHand.size(); z++){
-            gameDisplay.displayCard(xStart, AIY, players[1]->scoreHand.at(z)->getSuit(), players[1]->scoreHand.at(z)->getPriority(), A_BOLD); //show facedown card as deck; draw another card over it if cutCard has been cut
-            xStart+= inc;
-        }xStart = 20;
-    }
-
+    for(int z = 0; z < players[1]->scoreHand.size(); z++){
+        gameDisplay.displayCard(xStart, AIY, players[1]->scoreHand.at(z)->getSuit(), players[1]->scoreHand.at(z)->getPriority(), A_BOLD); //show facedown card as deck; draw another card over it if cutCard has been cut
+        xStart+= inc;
+    }xStart = 20;
 }
 /* Used to print hands on screen to test content of hands */
 void ShowCribbage::testCards(vector<Card*> hand){
