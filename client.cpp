@@ -30,6 +30,7 @@ class clientConnection{
         vector<int> readCards(int, int);
         void prepPII();
         void AIDiscards();
+        void closeDB();
         vector<int> pIIinfo();
         static clientConnection* createInstance();
         ~clientConnection() { instanceFlag = false;}
@@ -60,6 +61,22 @@ void clientConnection::phaseI(){
         cerr << "Client threw unexpected error." << endl;
         sleep(6000);
     }
+}
+void clientConnection::closeDB(){
+    try{
+        xmlrpc_c::clientSimple myClient;// = new(xmlrpc_c::clientSimple);
+        xmlrpc_c::value nothing;
+        string const serverUrl("http://localhost:8080/RPC2");
+        string const closeDB("closeDB");
+        myClient.call(serverUrl, closeDB, &nothing);
+    } catch (exception const& e) {
+        cerr << "Client threw error: " << e.what() << endl;
+        sleep(6000);
+    } catch (...) {
+        cerr << "Client threw unexpected error." << endl;
+        sleep(6000);
+
+}
 }
 void clientConnection::tellDiscard(int pIndex, int cIndex, int cardNum, int phase){
     try{
@@ -216,6 +233,7 @@ Card* cut = new Card();
 Card* storeCut = new Card();
 Player* players[2];
 
+
 vector<int> cardsToInts(vector<Card*> hand){
     vector<int> convertedHand;
     for(int i = 0; i < hand.size(); i++){
@@ -319,6 +337,7 @@ void goPhase(Player* players[], Deck * deck, ShowCribbage* display, Card* cut){
 }
 
 void phaseIII(ShowCribbage * display){
+
 }
 void phaseII(ShowCribbage * display){
     myClient = clientConnection::createInstance();
@@ -385,17 +404,18 @@ void phaseI(ShowCribbage* display){
     /*Discard AI cards on client; can get away with this because client and server will always discard last card in array */
     //display->drawCards(players, cut, 1, 0, true, crib, dealerPos,  0, 0);
     myClient->prepPII();
-    phase = 2;
+    //phase = 2;
 }
 //INITIALIZE GAME WILL CALL: READHARDSTATE, WHICH GETS ALL INFO FROM SERVER
 void initializeGame(){
-    myClient = clientConnection::createInstance();
     vector<int> gameInfo; //dealerPos, pTurn, phase
     vector<int> p0Info;
     vector<int> p1Info;
-    gameInfo = myClient->getGameInfo();
+    //gameInfo = myClient->getGameInfo();
     p0Info = myClient->getPlayerInfo(0);
-    p1Info = myClient->getPlayerInfo(1);
+    //p1Info = myClient->getPlayerInfo(1);
+    //myClient->closeDB();
+    /*
     cout << "Wait.. I did it??" << gameInfo.at(0) << gameInfo.at(1) << gameInfo.at(2) << endl;
     cout << "p0 info: " << p0Info.at(0) << p0Info.at(1) << p0Info.at(2) << endl;
     cout << "p1 info: " << p1Info.at(0) << p1Info.at(1) << p1Info.at(2) << endl;
@@ -410,6 +430,7 @@ void initializeGame(){
     pTurn = gameInfo.at(1);
     phase = gameInfo.at(2);
     goPhaseNumber = gameInfo.at(3);
+    */
     /* FOR RECOVERING HANDS: NEED TO FIX VECTOR ERROR, PROBABLY FROM RETURNING EMPTY VECTOR
        vector<Card*> t;
        players[0]->scoreHand = t;
@@ -443,9 +464,11 @@ void initializeGame(){
 
 int main(int argc, char* argv[]){
     initializeGame();
+    myClient = clientConnection::createInstance();
     ShowCribbage * display = new ShowCribbage();
     //phase = 0;
     //phase = 1;
+    phase = 0;
     while(players[0]->getPoints() < WINNING && players[1]->getPoints() < WINNING){
         if(phase == 1) phaseI(display);
         if(phase == 2) phaseII(display);

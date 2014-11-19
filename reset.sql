@@ -5,9 +5,9 @@
 
     CREATE TABLE IF NOT EXISTS HANDS(
         handID INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, 
-        cardID INTEGER,
         pIndex INTEGER,
-        context INTEGER
+        context INTEGER,
+        cardID INTEGER
     );
 
     CREATE TABLE IF NOT EXISTS PLAYERS(
