@@ -35,6 +35,9 @@ Card* Player::discard(int index) {
     return discard;
 }
 
+void Player::setPoints(int pts) {
+    points = pts;
+}
 
 void Player::addPoints(int morePoints) {
     points += morePoints;

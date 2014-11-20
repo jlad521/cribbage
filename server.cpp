@@ -15,7 +15,7 @@
 #include "Player.h"
 using namespace std;
 
-
+/*
 class dbConnection{
     private:
         sqlite3 *database;
@@ -31,7 +31,7 @@ class dbConnection{
         vector<int> getPlayer(int);
         static dbConnection* createInstance();
         ~dbConnection() {
-            //sqlite3_close(db);
+            sqlite3_close(db);
             fprintf(stdout, "closed connection");
             instanceFlag = false;
         }
@@ -51,14 +51,6 @@ dbConnection* dbConnection::createInstance(){
 
 dbConnection::dbConnection(){
     fprintf(stdout, "dbAddress before: %p", database);
-    rc = sqlite3_open("test.db", &database);
-    if( rc ){ // opens DB
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(database));
-        //exit(0);
-    }else{
-        fprintf(stderr, "Opened database successfully\n");
-        fprintf(stdout, "dbAddress after: %p", &database);
-    }
 }
 
 sqlite3* dbConnection::dbRef(){
@@ -97,7 +89,6 @@ vector<int> dbConnection::getPlayer(int id){
     }
     return playerInfo;
 }
-/*
    void databaseConnection::writeCard(int pIndex, int context, int cardNum){
    string currentCard;
    char buffer[20];
@@ -127,9 +118,10 @@ Player* players[2];
 int dealerPos, pTurn;
 vector<Card*> crib;
 Card* cut;
-dbConnection* dbConnect;
+//dbConnection* dbConnect;
 char *zErrMsg;
 int rc;
+bool played, lastPlayed;
 
 
 vector<int> cardsToInts(vector<Card*> hand){
@@ -155,6 +147,7 @@ vector<Card*> intsToCards(vector<int> hand){
         if(temp > 13 && temp < 27){suit = 2;}
         if(temp > 26 && temp < 40){suit = 3;}
         if(temp > 39 && temp < 53){suit = 4;}
+        if(priority == 0) {priority = 13;}
         convertedHand.push_back(new Card(priority, suit, value));
     }
     return convertedHand;
@@ -171,6 +164,7 @@ Card* intToCard(int card){
     if(card > 13 && card < 27){suit = 2;}
     if(card > 26 && card < 40){suit = 3;}
     if(card > 39 && card < 53){suit = 4;}
+    if(priority == 0) {priority = 13;}
     convertedCard = new Card(priority, suit, value);
     delete blank;
     return convertedCard;
@@ -428,9 +422,9 @@ int goPoints(vector<Card*> v){
     return pts;
 }
 
-int AIGoChoice(Player* p, int goNum){
-    for(int i = 0; i < p->hand.size(); i++){
-        if(p->hand.at(i)->getValue() + goNum < 31) {return i;}
+int AIGoChoice(vector<Card*> hand, int goNum){
+    for(int i = 0; i < hand.size(); i++){
+        if(hand.at(i)->getValue() + goNum < 31) {return i;}
     }
     return -1; //return "go" if can't play valid card
 }
@@ -447,9 +441,14 @@ int scorePhase(vector<Card*> hand, Card* cut){
 }
 
 vector<int> getCards(int pIndex, int contxt){
-    dbConnect = dbConnection::createInstance();
     sqlite3* db;
-    db = dbConnect->dbRef();
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open db: %s\n", sqlite3_errmsg(db));
+        //exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
     vector<int> cardInfo;
     const char* sql;
     sqlite3_stmt* stmt;
@@ -474,12 +473,19 @@ vector<int> getCards(int pIndex, int contxt){
     }else{
         fprintf(stdout, "Operation done successfully\n");
     }
+    sqlite3_close(db);
     return cardInfo;
 }
 
 int getPlayerPoints(int pIndex){
-    dbConnect = dbConnection::createInstance();
-    sqlite3* db = dbConnect->dbRef();
+    sqlite3* db;
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        //exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
     int playerPts;
     sqlite3_stmt *stmt;
     const char* sql;
@@ -487,35 +493,36 @@ int getPlayerPoints(int pIndex){
     const char* data = "Callback function called";
     char buffer[20];
     sprintf(buffer, "%i;", pIndex);
-    sqlQuery.append(buffer);
     sqlQuery = "SELECT points FROM PLAYERS WHERE playerID = ";
+    sqlQuery.append(buffer);
+    fprintf(stdout, "getPlayerPoints query: %s\n", sqlQuery.c_str());
     sql =  sqlQuery.c_str();
     rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if( rc != SQLITE_OK){
         fprintf(stderr, "SELECT FAILED:%s\n ", sqlite3_errmsg(db));
     }
     while(sqlite3_step(stmt) == SQLITE_ROW){
-        dealerPos = sqlite3_column_int(stmt,0);
-        fprintf(stdout, "cardRead: %i\n", dealerPos);
+        playerPts = sqlite3_column_int(stmt,0);
+        fprintf(stdout, "playerPoints read: %i\n", playerPts);
     }
     sqlite3_finalize(stmt);
-    if( rc != SQLITE_OK ){
-        fprintf(stderr, "SQL error: %s\n", zErrMsg);
-        sqlite3_free(zErrMsg);
-    }else{
-        fprintf(stdout, "Operation done successfully\n");
-    }
+    sqlite3_close(db);
     return playerPts;
 }
 
 void updateLP(int pIndex, int card){
-    dbConnect = dbConnection::createInstance();
-    sqlite3* db = dbConnect->dbRef();
+    sqlite3* db;
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        //exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
     const char* sql;
     const char* data = "Callback function called";
-    int oldPts = getPlayerPoints(pIndex);
     string currentCard;
-    char buffer[20];
+    char buffer[50];
     sprintf(buffer, "%i WHERE playerID= %i;", card, pIndex);
     currentCard = "UPDATE PLAYERS SET lastPlayed = ";
     currentCard.append(buffer);
@@ -529,20 +536,27 @@ void updateLP(int pIndex, int card){
     else{
         fprintf(stdout, "Records created successfully\n");
     }
+    sqlite3_close(db);
 }
 
 void updatePlayerPoints(int pIndex, int plusPoints){
-    dbConnect = dbConnection::createInstance();
-    sqlite3* db = dbConnect->dbRef();
+    sqlite3* db;
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        //exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
     const char* sql;
     const char* data = "Callback function called";
     int oldPts = getPlayerPoints(pIndex);
-    string currentCard;
-    char buffer[20];
-    sprintf(buffer, "%i WHERE playerID= %i;", oldPts + plusPoints, pIndex);
-    currentCard = "UPDATE PLAYERS SET points = ";
+    int pts = oldPts + plusPoints;
+    char buffer[50];
+    sprintf(buffer, "%i WHERE playerID= %i;", pts, pIndex);
+    string currentCard = "UPDATE PLAYERS SET points = ";
     currentCard.append(buffer);
-    fprintf(stdout, "update player query: %s\n", currentCard.c_str());
+    fprintf(stdout, "update playerPts query: %s\n", currentCard.c_str());
     sql = currentCard.c_str();
     rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
     if(rc!= SQLITE_OK ){
@@ -552,11 +566,18 @@ void updatePlayerPoints(int pIndex, int plusPoints){
     else{
         fprintf(stdout, "Records created successfully\n");
     }
+    sqlite3_close(db);
 }
 
 int getDealerPos(){
-    dbConnect = dbConnection::createInstance();
-    sqlite3* db = dbConnect->dbRef();
+    sqlite3* db;
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        //exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
     int dealerPos;
     sqlite3_stmt *stmt;
     const char* sql;
@@ -570,7 +591,7 @@ int getDealerPos(){
     }
     while(sqlite3_step(stmt) == SQLITE_ROW){
         dealerPos = sqlite3_column_int(stmt,0);
-        fprintf(stdout, "cardRead: %i\n", dealerPos);
+        fprintf(stdout, "dealerPos: %i\n", dealerPos);
     }
     sqlite3_finalize(stmt);
     if( rc != SQLITE_OK ){
@@ -579,11 +600,18 @@ int getDealerPos(){
     }else{
         fprintf(stdout, "Operation done successfully\n");
     }
+    sqlite3_close(db);
     return dealerPos;
 }
 void updatePhase(int p){
-    dbConnect = dbConnection::createInstance();
-    sqlite3* db = dbConnect->dbRef();
+    sqlite3* db;
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        //exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
     const char* sql;
     const char* data = "Callback function called";
     string currentCard;
@@ -602,10 +630,17 @@ void updatePhase(int p){
     else{
         fprintf(stdout, "Records created successfully\n");
     }
+    sqlite3_close(db);
 }
 void updatePTurn(int n){
-    dbConnect = dbConnection::createInstance();
-    sqlite3* db = dbConnect->dbRef();
+    sqlite3* db;
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        //exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
     const char* sql;
     const char* data = "Callback function called";
     string currentCard;
@@ -623,16 +658,23 @@ void updatePTurn(int n){
     else{
         fprintf(stdout, "Records created successfully\n");
     }
+    sqlite3_close(db);
 }
 
 void updateGoNum(int n){
-    dbConnect = dbConnection::createInstance();
-    sqlite3* db = dbConnect->dbRef();
+    sqlite3* db;
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        //exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
     const char* sql;
     const char* data = "Callback function called";
     char buffer[20];
-    sprintf(buffer, "%i ;", n);
-    string currentCard = "UPDATE GAME SET goPhaseNumber = ";
+    sprintf(buffer, "%i;", n);
+    string currentCard = "UPDATE GAME SET goNumber = ";
     currentCard.append(buffer);
     fprintf(stdout, "update cut card query: %s\n", currentCard.c_str());
     sql = currentCard.c_str();
@@ -644,11 +686,18 @@ void updateGoNum(int n){
     else{
         fprintf(stdout, "Records created successfully\n");
     }
+    sqlite3_close(db);
 }
 
 void updateCut(int cardNum){
-    dbConnect = dbConnection::createInstance();
-    sqlite3* db = dbConnect->dbRef();
+    sqlite3* db;
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        //exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
     const char* sql;
     const char* data = "Callback function called";
     rc = sqlite3_open("test.db", &db);
@@ -666,11 +715,18 @@ void updateCut(int cardNum){
     else{
         fprintf(stdout, "Records created successfully\n");
     }
+    sqlite3_close(db);
 }
 
 void removeCards(int pIndex, int context){
-    dbConnect = dbConnection::createInstance();
-    sqlite3* db = dbConnect->dbRef();
+    sqlite3* db;
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        //exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
     const char* sql;
     const char* data = "Callback function called";
     rc = sqlite3_open("test.db", &db);
@@ -688,10 +744,17 @@ void removeCards(int pIndex, int context){
     else{
         fprintf(stdout, "Records created successfully\n");
     }
+    sqlite3_close(db);
 }
 void removeCard(int pIndex, int context, int cardNum){
-    dbConnect = dbConnection::createInstance();
-    sqlite3* db = dbConnect->dbRef();
+    sqlite3* db;
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        //exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
     const char* sql;
     const char* data = "Callback function called";
     string currentQuery;
@@ -709,10 +772,17 @@ void removeCard(int pIndex, int context, int cardNum){
     else{
         fprintf(stdout, "Records created successfully\n");
     }
+    sqlite3_close(db);
 }
 void writeCard(int pIndex, int context, int card){
-    dbConnect = dbConnection::createInstance();
-    sqlite3* db = dbConnect->dbRef();
+    sqlite3* db;
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        //exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
     const char* sql;
     const char* data = "Callback function called";
     char buffer[50];
@@ -730,11 +800,18 @@ void writeCard(int pIndex, int context, int card){
     else{
         fprintf(stdout, "Records created successfully\n");
     }
+    sqlite3_close(db);
 }
 
 void writeCards(int pIndex, int context, vector<int> cards){
-    dbConnect = dbConnection::createInstance();
-    sqlite3* db = dbConnect->dbRef();
+    sqlite3* db;
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        //exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
     const char* sql;
     const char* data = "Callback function called";
     string currentCard;
@@ -755,25 +832,32 @@ void writeCards(int pIndex, int context, vector<int> cards){
             fprintf(stdout, "Records created successfully\n");
         }
     }
+    sqlite3_close(db);
 }
 
 int getPTurn(){
-    dbConnect = dbConnection::createInstance();
-    sqlite3* db = dbConnect->dbRef();
-    int goNum;
+    sqlite3* db;
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        //exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
+    int pTurn;
     sqlite3_stmt *stmt;
     const char* sql;
     string sqlQuery;
     const char* data = "Callback function called";
-    //SELECT cardID FROM HANDS WHERE pIndex = 0 AND context = 0;
-    sqlQuery = "SELECT pTurn FROM GAME";
+    sqlQuery = "SELECT pTurn FROM GAME;";
     sql =  sqlQuery.c_str();
     rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if( rc != SQLITE_OK){
         fprintf(stderr, "SELECT FAILED:%s\n ", sqlite3_errmsg(db));
     }
     while(sqlite3_step(stmt) == SQLITE_ROW){
-        goNum = sqlite3_column_int(stmt,0);
+        pTurn = sqlite3_column_int(stmt,0);
+        fprintf(stdout, "pTurn: %d\n", pTurn);
     }
     sqlite3_finalize(stmt);
     if( rc != SQLITE_OK ){
@@ -782,11 +866,18 @@ int getPTurn(){
     }else{
         fprintf(stdout, "Operation done successfully\n");
     }
-    return goNum;
+    sqlite3_close(db);
+    return pTurn;
 }
 int getGoPhaseNum(){
-    dbConnect = dbConnection::createInstance();
-    sqlite3* db = dbConnect->dbRef();
+    sqlite3* db;
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        //exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
     int goNum;
     sqlite3_stmt *stmt;
     const char* sql;
@@ -800,6 +891,7 @@ int getGoPhaseNum(){
     }
     while(sqlite3_step(stmt) == SQLITE_ROW){
         goNum = sqlite3_column_int(stmt,0);
+        fprintf(stdout, "goNumber: %d", goNum);
     }
     sqlite3_finalize(stmt);
     if( rc != SQLITE_OK ){
@@ -808,12 +900,19 @@ int getGoPhaseNum(){
     }else{
         fprintf(stdout, "Operation done successfully\n");
     }
+    sqlite3_close(db);
     return goNum;
 }
 
 vector<int> getPlayer(int IDent){
-    sqlite3* db = dbConnect->dbRef();
-    fprintf(stdout, "dbAddress : %p", db);
+    sqlite3* db;
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        //exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
     vector<int> playerInfo;
     sqlite3_stmt *stmt;
     const char* sql;
@@ -842,12 +941,19 @@ vector<int> getPlayer(int IDent){
     }else{
         fprintf(stdout, "GAME INFO returned scuccesueflly done successfully\n");
     }
+    sqlite3_close(db);
     return playerInfo;
 }
 
 vector<int> getGame(){
-    dbConnect = dbConnection::createInstance();
-    sqlite3* db = dbConnect->dbRef();
+    sqlite3* db;
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        //exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
     fprintf(stdout, "it's a miracle if i get here");
     vector<int> gameInfo;
     sqlite3_stmt *stmt;
@@ -858,7 +964,7 @@ vector<int> getGame(){
     sql = sqlQuery.c_str();
     rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
     if( rc != SQLITE_OK){
-        fprintf(stderr, "SELECT FAILED:%s\n ", sqlite3_errmsg(dbConnect->dbRef()));
+        fprintf(stderr, "SELECT FAILED:%s\n ", sqlite3_errmsg(db));
     }
     while(sqlite3_step(stmt) == SQLITE_ROW){
         gameInfo.push_back(sqlite3_column_int(stmt,0));
@@ -867,20 +973,11 @@ vector<int> getGame(){
         gameInfo.push_back(sqlite3_column_int(stmt,3));
     }
     sqlite3_finalize(stmt);
+    sqlite3_close(db);
     return gameInfo;
 }
 //makeGame: Initializes game objects, creates database tables
 
-class closeDB : public xmlrpc_c::method {
-    public:
-        closeDB(){}
-        void
-            execute(xmlrpc_c::paramList const& paramList,
-                    xmlrpc_c::value* returnP) {
-                dbConnect->~dbConnection();
-                *returnP = xmlrpc_c::value_int(5);
-            }
-};
 class AIDiscards : public xmlrpc_c::method {
     public:
         AIDiscards(){}
@@ -899,6 +996,16 @@ class AIDiscards : public xmlrpc_c::method {
             }
 };
 
+class AITurn : public xmlrpc_c::method {
+    public:
+        AITurn(){}
+        void
+            execute(xmlrpc_c::paramList const& paramList,
+                    xmlrpc_c::value* returnP) {
+                int index = AIGoChoice(intsToCards(getCards(1,0)), getGoPhaseNum());
+                *returnP = xmlrpc_c::value_int(index);
+            }
+};
 class phaseIIturn : public xmlrpc_c::method {
     public:
         phaseIIturn(){}
@@ -907,28 +1014,34 @@ class phaseIIturn : public xmlrpc_c::method {
                     xmlrpc_c::value* returnP) {
                 int const pIndex(paramList.getInt(0));
                 int const cardNum(paramList.getInt(1));
-                vector<int> playedCard;
-                playedCard.push_back(cardNum);
-                removeCard(pIndex, 0, cardNum);
-                writeCards(3,3,playedCard);
-                updateLP(pIndex, cardNum);
-                int goNum = getGoPhaseNum();
-                goNum += intToCard(cardNum)->getValue();
-                updateGoNum(goNum);
-                if(goNum == 15) {updatePlayerPoints(pIndex, 2);}
-                if(goNum == 31) {
-                    updatePlayerPoints(pIndex, 2);
+                vector<Card*> roundCards;
+                lastPlayed = played;
+                if(cardNum == -1){played = false;}
+                else{
+                    played = true;
+                    Card* justPlayed = intToCard(cardNum);
+                    writeCard(3,3, cardNum);
+                    removeCard(pIndex,0,cardNum);
+                    int goNumber = getGoPhaseNum();
+                    roundCards = intsToCards(getCards(3, 3));
+                    updateLP(pIndex, cardNum);
+                    goNumber += justPlayed->getValue();
+                    updateGoNum(goNumber);
+                    if(goNumber == 15) {updatePlayerPoints(pIndex, 2);}
+                    if(goNumber == 31) {
+                        updatePlayerPoints(pIndex, 2);
+                        updateGoNum(0);
+                        removeCards(3,3); //delete roundCards;
+                    }
+                    updatePlayerPoints(pIndex, goPoints(roundCards));
+                }
+                if(!lastPlayed && !played){
+                    updatePlayerPoints(pIndex, 1);
                     updateGoNum(0);
                     removeCards(3,3); //delete roundCards;
                 }
-                vector<Card*> roundCards;
-                roundCards = intsToCards(getCards(3,3));
-                updatePlayerPoints(pIndex, goPoints(roundCards));
-
-                updatePTurn((getPTurn() + 1) % 2);
-
-                //int index, played, lastPlayed; //from dB
-                //vector<int> gameInfo = getGame();
+                updatePTurn((pIndex +1)%2);
+                *returnP = xmlrpc_c::value_int(-1);
             }
 };
 
@@ -944,7 +1057,6 @@ class prepPII : public xmlrpc_c::method {
                 AICards.pop_back();
                 removeCard(1,0, AICards.back());
                 AICards.pop_back();
-                //write scoreHands
                 writeCards(0,1,getCards(0,0));
                 writeCards(1,1,getCards(1,0));
                 updatePhase(2);
@@ -959,12 +1071,17 @@ class tellDiscard : public xmlrpc_c::method {
             execute(xmlrpc_c::paramList const& paramList,
                     xmlrpc_c::value* returnP) {
                 int const pIndex(paramList.getInt(0));
-                int const cIndex(paramList.getInt(1));
+                int const ctxt(paramList.getInt(1));
                 int const cardNum(paramList.getInt(2));
                 int const phase(paramList.getInt(3));
                 paramList.verifyEnd(4);
                 if(phase ==1){ writeCard(2,2, cardNum);} //add to crib
-                removeCard(pIndex, cIndex, cardNum);
+                if(phase ==2){
+                    writeCard(3,3, cardNum);
+                    updateLP(0, cardNum);
+                } //add to roundCards
+                if(cardNum == -1) {played = false; }
+                removeCard(pIndex, ctxt, cardNum);
                 *returnP = xmlrpc_c::value_int(5);
             }
 };
@@ -1026,10 +1143,11 @@ class pIIinfo : public xmlrpc_c::method {
         void
             execute(xmlrpc_c::paramList const& paramList,
                     xmlrpc_c::value* returnP) {
-                //*returnP = xmlrpc_c::value_int(getGoPhaseNum());
                 vector<xmlrpc_c::value> gameData;
                 gameData.push_back(xmlrpc_c::value_int(getGoPhaseNum()));
                 gameData.push_back(xmlrpc_c::value_int(getPTurn()));
+                gameData.push_back(xmlrpc_c::value_int(getPlayerPoints(0)));
+                gameData.push_back(xmlrpc_c::value_int(getPlayerPoints(1)));
                 xmlrpc_c::value_array RAY(gameData);
                 *returnP = RAY;
             }
@@ -1044,7 +1162,7 @@ class getPlayerInfo : public xmlrpc_c::method {
                 int const pID(paramList.getInt(0));
                 vector<int> playerInfo;
                 //playerInfo = getPlayer(pID);
-                playerInfo = dbConnect->getPlayer(pID);
+                playerInfo = getPlayer(pID);
                 fprintf(stdout, "it returned a vector at least? %d", playerInfo.back());
                 vector<xmlrpc_c::value> gameData;
                 gameData.push_back(xmlrpc_c::value_int(playerInfo.at(0)));
@@ -1061,7 +1179,8 @@ class getGameInfo : public xmlrpc_c::method {
         void
             execute(xmlrpc_c::paramList const& paramList,
                     xmlrpc_c::value* returnP) {
-                vector<int> gInfo = getGame();
+                vector<int> gInfo;
+                gInfo = getGame();
                 vector<xmlrpc_c::value> gameData;
                 gameData.push_back(xmlrpc_c::value_int(gInfo.at(0)));
                 gameData.push_back(xmlrpc_c::value_int(gInfo.at(1)));
@@ -1100,7 +1219,7 @@ main(int           const,
     //TABLES CREATED IN MAKE GAME; MAKE THEM CORRECT
     }
     */
-    dbConnect->createInstance();
+    //dbConnect->createInstance();
     try {
         xmlrpc_c::registry myRegistry;
         xmlrpc_c::methodPtr const getPlayerInfoP(new getPlayerInfo);
@@ -1119,8 +1238,10 @@ main(int           const,
         myRegistry.addMethod("prepPII", prepPIIP);
         xmlrpc_c::methodPtr const pIIinfoP(new pIIinfo);
         myRegistry.addMethod("pIIinfo", pIIinfoP);
-        xmlrpc_c::methodPtr const closeDBP(new closeDB);
-        myRegistry.addMethod("closeDB", closeDBP);
+        xmlrpc_c::methodPtr const AITurnP(new AITurn);
+        myRegistry.addMethod("AITurn", AITurnP);
+        xmlrpc_c::methodPtr const phaseIITurnP(new phaseIIturn);
+        myRegistry.addMethod("phaseIITurn", phaseIITurnP);
 
         xmlrpc_c::serverAbyss myAbyssServer(
                 xmlrpc_c::serverAbyss::constrOpt()

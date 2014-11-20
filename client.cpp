@@ -30,7 +30,8 @@ class clientConnection{
         vector<int> readCards(int, int);
         void prepPII();
         void AIDiscards();
-        void closeDB();
+        void phaseIITurn(int, int);
+        int AITurn();
         vector<int> pIIinfo();
         static clientConnection* createInstance();
         ~clientConnection() { instanceFlag = false;}
@@ -62,21 +63,20 @@ void clientConnection::phaseI(){
         sleep(6000);
     }
 }
-void clientConnection::closeDB(){
+void clientConnection::phaseIITurn(int pIndex, int cardNum){
     try{
         xmlrpc_c::clientSimple myClient;// = new(xmlrpc_c::clientSimple);
-        xmlrpc_c::value nothing;
+        xmlrpc_c::value result;
         string const serverUrl("http://localhost:8080/RPC2");
-        string const closeDB("closeDB");
-        myClient.call(serverUrl, closeDB, &nothing);
+        string const phaseIITurn("phaseIITurn");
+        myClient.call(serverUrl, phaseIITurn, "ii", &result, pIndex, cardNum);
     } catch (exception const& e) {
         cerr << "Client threw error: " << e.what() << endl;
         sleep(6000);
     } catch (...) {
         cerr << "Client threw unexpected error." << endl;
         sleep(6000);
-
-}
+    }
 }
 void clientConnection::tellDiscard(int pIndex, int cIndex, int cardNum, int phase){
     try{
@@ -109,7 +109,24 @@ void clientConnection::AIDiscards(){
         sleep(6000);
     }
 }
-
+int clientConnection::AITurn(){
+    int index;
+    try{
+        xmlrpc_c::clientSimple myClient;// = new(xmlrpc_c::clientSimple);
+        xmlrpc_c::value nothing;
+        string const serverUrl("http://localhost:8080/RPC2");
+        string const AITurn("AITurn");
+        myClient.call(serverUrl, AITurn, &nothing);
+        index = xmlrpc_c::value_int(nothing);
+    } catch (exception const& e) {
+        cerr << "Client threw error: " << e.what() << endl;
+        sleep(6000);
+    } catch (...) {
+        cerr << "Client threw unexpected error." << endl;
+        sleep(6000);
+    }
+    return index;
+}
 vector<int> clientConnection::pIIinfo(){
     vector<int> inf;
     try{
@@ -122,6 +139,8 @@ vector<int> clientConnection::pIIinfo(){
         vector<xmlrpc_c::value> const gameInfo(arrr.vectorValueValue());
         inf.push_back(xmlrpc_c::value_int(gameInfo.at(0)));
         inf.push_back(xmlrpc_c::value_int(gameInfo.at(1)));
+        inf.push_back(xmlrpc_c::value_int(gameInfo.at(2)));
+        inf.push_back(xmlrpc_c::value_int(gameInfo.at(3)));
     } catch (exception const& e) {
         cerr << "Client threw error: " << e.what() << endl;
         sleep(6000);
@@ -182,13 +201,11 @@ vector<int> clientConnection::getPlayerInfo(int pID){
         string const serverUrl("http://localhost:8080/RPC2");
         string const getPlayerInfo("getPlayerInfo");
         myClient.call(serverUrl, getPlayerInfo, "i", &value, pID);
-
         xmlrpc_c::value_array arrr(value);
         vector<xmlrpc_c::value> const gameInfo(arrr.vectorValueValue());
         info.push_back(xmlrpc_c::value_int(gameInfo.at(0)));
         info.push_back(xmlrpc_c::value_int(gameInfo.at(1)));
         info.push_back(xmlrpc_c::value_int(gameInfo.at(2)));
-
     } catch (exception const& e) {
         cerr << "Client threw error: " << e.what() << endl;
         sleep(6000);
@@ -257,6 +274,7 @@ vector<Card*> intsToCards(vector<int> hand){
         if(temp > 13 && temp < 27){suit = 2;}
         if(temp > 26 && temp < 40){suit = 3;}
         if(temp > 39 && temp < 53){suit = 4;}
+        if(priority == 0) {priority = 13;}
         convertedHand.push_back(new Card(priority, suit, value));
     }
     return convertedHand;
@@ -275,6 +293,7 @@ Card* intToCard(int card){
     if(card > 13 && card < 27){suit = 2;}
     if(card > 26 && card < 40){suit = 3;}
     if(card > 39 && card < 53){suit = 4;}
+    if(priority == 0) {priority = 13;}
     convertedCard = new Card(priority, suit, value);
     return convertedCard;
 }
@@ -340,35 +359,45 @@ void phaseIII(ShowCribbage * display){
 
 }
 void phaseII(ShowCribbage * display){
-    myClient = clientConnection::createInstance();
     vector<int> p2info;
+    int aiIndex;
+    int cardNum;
+    vector<int> updatedP2info;
+    display->drawPII(players, cut, 2, 0, true, dealerPos);
+    //int played, lastPlayed;
     while(!players[0]->hand.empty() || !players[1]->hand.empty()){
         p2info = myClient->pIIinfo();
         goPhaseNumber = p2info.at(0);
-        //pTurn = p2info.at(1);
-        pTurn = 0; //STUB FOR NOW
-        if(players[pTurn]->isHuman){
+        pTurn = p2info.at(1);
+        //pTurn = 0; //STUB FOR NOW
+        if(pTurn == 0){
             int index = display->getCard(players[0], 2, goPhaseNumber);
-            int played, lastPlayed;
-            myClient->tellDiscard(0,0, cardToInt(players[0]->hand.at(index)), 2);
-            //players[0]->hand.at();
             if(index > -1){
+                myClient->phaseIITurn(pTurn, cardToInt(players[pTurn]->hand.at(index)));
                 players[pTurn]->lastCard = players[pTurn]->hand.at(index); //
-                //roundCards.push_back(players[pTurn]->hand.at(index)); //
-                goPhaseNumber += players[pTurn]->lastCard->getValue();
                 players[pTurn]->hand.erase(players[pTurn]->hand.begin()+index);
-                played = 0;
             }
-            if(index == -1){played = -1;}
+            if(index == -1){ myClient->phaseIITurn(pTurn, -1);}
         }
         else{
-            //myClient->writeRound();
+            aiIndex = myClient->AITurn();
+            if(aiIndex > -1){
+                myClient->phaseIITurn(pTurn, cardToInt(players[pTurn]->hand.at(aiIndex)));
+                players[pTurn]->lastCard = players[1]->hand.at(aiIndex);
+                players[pTurn]->hand.erase(players[pTurn]->hand.begin()+aiIndex);
+            }
+            if (aiIndex == -1) {myClient->phaseIITurn(pTurn, -1);}
         }
-        display->drawPII(players, cut, 1, 0, true, dealerPos);
+        //myClient->phaseIITurn(pTurn);
+        updatedP2info = myClient->pIIinfo();
+        players[0]->setPoints(updatedP2info.at(2));
+        players[1]->setPoints(updatedP2info.at(3));
+        display->drawPII(players, cut, 2, updatedP2info.at(0), true, dealerPos);
+        //pTurn = updatedP2info.at(1);
     }
 }
+
 void phaseI(ShowCribbage* display){
-    myClient = clientConnection::createInstance();
     myClient->phaseI(); //deals cards to players
     players[0]->hand = intsToCards(myClient->readCards(0,0));
     players[1]->hand = intsToCards(myClient->readCards(1,0));
@@ -404,23 +433,22 @@ void phaseI(ShowCribbage* display){
     /*Discard AI cards on client; can get away with this because client and server will always discard last card in array */
     //display->drawCards(players, cut, 1, 0, true, crib, dealerPos,  0, 0);
     myClient->prepPII();
-    //phase = 2;
+    phase = 2;
 }
 //INITIALIZE GAME WILL CALL: READHARDSTATE, WHICH GETS ALL INFO FROM SERVER
 void initializeGame(){
     vector<int> gameInfo; //dealerPos, pTurn, phase
     vector<int> p0Info;
     vector<int> p1Info;
-    //gameInfo = myClient->getGameInfo();
+    gameInfo = myClient->getGameInfo();
     p0Info = myClient->getPlayerInfo(0);
-    //p1Info = myClient->getPlayerInfo(1);
-    //myClient->closeDB();
-    /*
-    cout << "Wait.. I did it??" << gameInfo.at(0) << gameInfo.at(1) << gameInfo.at(2) << endl;
+    p1Info = myClient->getPlayerInfo(1);
+
+    cout << "Game Info: " << gameInfo.at(0) << gameInfo.at(1) << gameInfo.at(2) << endl;
     cout << "p0 info: " << p0Info.at(0) << p0Info.at(1) << p0Info.at(2) << endl;
     cout << "p1 info: " << p1Info.at(0) << p1Info.at(1) << p1Info.at(2) << endl;
-    bool isHmn = (p0Info.at(1) != 0);
-    bool isAHmn = (p1Info.at(1) != 0);
+    bool isHmn = (p0Info.at(1) == 1);
+    bool isAHmn = (p1Info.at(1) == 1);
     Player * human = new Player(0, p0Info.at(0),  isHmn, intToCard(p0Info.at(2)));
     Player * AI = new Player(1, p1Info.at(0),  isAHmn, intToCard(p1Info.at(2)));
     //Player* players[2];
@@ -430,7 +458,7 @@ void initializeGame(){
     pTurn = gameInfo.at(1);
     phase = gameInfo.at(2);
     goPhaseNumber = gameInfo.at(3);
-    */
+
     /* FOR RECOVERING HANDS: NEED TO FIX VECTOR ERROR, PROBABLY FROM RETURNING EMPTY VECTOR
        vector<Card*> t;
        players[0]->scoreHand = t;
@@ -463,12 +491,11 @@ void initializeGame(){
 
 
 int main(int argc, char* argv[]){
-    initializeGame();
     myClient = clientConnection::createInstance();
+    initializeGame();
     ShowCribbage * display = new ShowCribbage();
     //phase = 0;
-    //phase = 1;
-    phase = 0;
+    phase = 1;
     while(players[0]->getPoints() < WINNING && players[1]->getPoints() < WINNING){
         if(phase == 1) phaseI(display);
         if(phase == 2) phaseII(display);

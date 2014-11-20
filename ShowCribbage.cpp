@@ -28,7 +28,7 @@ ShowCribbage::ShowCribbage(){
     //anything else?
 }
 //If time, rewrite into 3 functions
-void  ShowCribbage::drawPII(Player* players[], Card* cutCard, int phase, int goPhaseNumber, bool isCrib, int dealerPos){
+void ShowCribbage::drawPII(Player* players[], Card* cutCard, int phase, int goPhaseNumber, bool isCrib, int dealerPos){
     /*Code below is always displayed, irrespective of phase */
     key = gameDisplay.captureInput();
     //NEED TO USE GET COLS AND GET WIDTH TO DRAW BOX. ALSO INCLUDE RESCALE FUNCTIONALITY

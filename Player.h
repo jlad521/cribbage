@@ -23,6 +23,7 @@ class Player{
         int getPosition();
         void setLastCard(Card* card);
         void setHuman(bool val);
+        void setPoints(int val);
         Card* discard(int index);
         void addPoints(int morePoints);
         Card* getLastCard();
