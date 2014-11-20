@@ -67,7 +67,9 @@ void ShowCribbage::drawPII(Player* players[], Card* cutCard, int phase, int goPh
     }
 }
 
-void ShowCribbage::drawPIII(Player* players[], vector<Card*> crib, int apoints, int hpoints){
+void ShowCribbage::drawPIII(Player* players[], vector<Card*> crib, int hpoints, int apoints){
+    key = gameDisplay.captureInput();
+    gameDisplay.drawBox(0,0,88,44,A_BOLD); //SHOULD USE GETWIDTH AND HEIGHT FOR DIMENSIONS OF BOX
     messageStringTop.str("");
     messageStringTop << players[1]->name << ": " << players[1]->getPoints() <<  "           " << players[1]->name << " scores " << apoints << " points with that hand. Click to begin next round";
     gameDisplay.bannerTop(messageStringTop.str());

@@ -147,7 +147,10 @@ vector<Card*> intsToCards(vector<int> hand){
         if(temp > 13 && temp < 27){suit = 2;}
         if(temp > 26 && temp < 40){suit = 3;}
         if(temp > 39 && temp < 53){suit = 4;}
-        if(priority == 0) {priority = 13;}
+        if(priority == 0) {
+            priority = 13;
+            value = 10;
+        }
         convertedHand.push_back(new Card(priority, suit, value));
     }
     return convertedHand;
@@ -164,7 +167,10 @@ Card* intToCard(int card){
     if(card > 13 && card < 27){suit = 2;}
     if(card > 26 && card < 40){suit = 3;}
     if(card > 39 && card < 53){suit = 4;}
-    if(priority == 0) {priority = 13;}
+    if(priority == 0) {
+        priority = 13;
+        value = 10;
+    }
     convertedCard = new Card(priority, suit, value);
     delete blank;
     return convertedCard;
@@ -205,7 +211,7 @@ int Pairs(vector<Card*> v){ // 2 pts per pair (3 of a kind - 3 pairs; 4 of a kin
 
     for(i = 0; i < v.size(); i++){
         for(b = (i+1); b < v.size(); b++){
-            if(v.at(i)->getFace() == v.at(b)->getFace()){
+            if(v.at(i)->getPriority() == v.at(b)->getPriority()){
                 n++;
             }
         }
@@ -429,14 +435,12 @@ int AIGoChoice(vector<Card*> hand, int goNum){
     return -1; //return "go" if can't play valid card
 }
 
-int scorePhase(vector<Card*> hand, Card* cut){
+int scorePhase(vector<Card*> hand){
     int points = 0;
     points += Pairs(hand);
-    points += JackSameSuit(hand, cut);
     points += Fifteen(hand);
     points += RunScore(hand);
     points += FlushScore(hand);
-    //cout << "IT FOUND: " << points;
     return points;
 }
 
@@ -477,6 +481,39 @@ vector<int> getCards(int pIndex, int contxt){
     return cardInfo;
 }
 
+int getCutCard(){
+    sqlite3* db;
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open db: %s\n", sqlite3_errmsg(db));
+        //exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
+    int cutCard;
+    const char* sql;
+    sqlite3_stmt* stmt;
+    char buffer[20];
+    string sqlQuery = "SELECT cutCard FROM GAME;";
+    sql =  sqlQuery.c_str();
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if( rc != SQLITE_OK){
+        fprintf(stderr, "SELECT FAILED:%s\n ", sqlite3_errmsg(db));
+    }
+    while(sqlite3_step(stmt) == SQLITE_ROW){
+        cutCard = sqlite3_column_int(stmt,0);
+    }
+    sqlite3_finalize(stmt);
+    if( rc != SQLITE_OK ){
+        fprintf(stderr, "SQL error: %s\n", zErrMsg);
+        sqlite3_free(zErrMsg);
+    }else{
+        fprintf(stdout, "Operation done successfully\n");
+    }
+    sqlite3_close(db);
+    return cutCard;
+}
+
 int getPlayerPoints(int pIndex){
     sqlite3* db;
     rc = sqlite3_open("test.db", &db);
@@ -508,6 +545,34 @@ int getPlayerPoints(int pIndex){
     sqlite3_finalize(stmt);
     sqlite3_close(db);
     return playerPts;
+}
+
+void updateDealerPos(int p){
+    sqlite3* db;
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        //exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
+    const char* sql;
+    const char* data = "Callback function called";
+    char buffer[50];
+    sprintf(buffer, "%i;", p);
+    string currentCard = "UPDATE GAME SET dealerPos = ";
+    currentCard.append(buffer);
+    fprintf(stdout, "update player query: %s\n", currentCard.c_str());
+    sql = currentCard.c_str();
+    rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
+    if(rc!= SQLITE_OK ){
+        fprintf(stderr, "SQL error: %s\n", zErrMsg);
+        sqlite3_free(zErrMsg);
+    }
+    else{
+        fprintf(stdout, "Records created successfully\n");
+    }
+    sqlite3_close(db);
 }
 
 void updateLP(int pIndex, int card){
@@ -996,6 +1061,24 @@ class AIDiscards : public xmlrpc_c::method {
             }
 };
 
+class nextRound : public xmlrpc_c::method {
+    public:
+        nextRound(){}
+        void
+            execute(xmlrpc_c::paramList const& paramList,
+                    xmlrpc_c::value* returnP) {
+                int dPos = getDealerPos();
+                removeCards(0,1);
+                removeCards(1,1);
+                removeCards(2,2);
+                updatePhase(1);
+                updateLP(0,0);
+                updateLP(1,0);
+                updateGoNum(0);
+                updateDealerPos((dPos + 1) %2);
+                *returnP = xmlrpc_c::value_int(-1);
+            }
+};
 class AITurn : public xmlrpc_c::method {
     public:
         AITurn(){}
@@ -1006,6 +1089,51 @@ class AITurn : public xmlrpc_c::method {
                 *returnP = xmlrpc_c::value_int(index);
             }
 };
+
+class prepPIII : public xmlrpc_c::method {
+    public:
+        prepPIII(){}
+        void
+            execute(xmlrpc_c::paramList const& paramList,
+                    xmlrpc_c::value* returnP) {
+                updatePhase(3);
+                updatePlayerPoints((getPTurn()+1)%2, 1);
+                *returnP = xmlrpc_c::value_int(-1);
+            }
+};
+
+class phaseIII : public xmlrpc_c::method {
+    public:
+        phaseIII(){}
+        void
+            execute(xmlrpc_c::paramList const& paramList,
+                    xmlrpc_c::value* returnP) {
+                vector<Card*> human;
+                vector<Card*> ai;
+                int p0Pts = scorePhase(intsToCards(getCards(0,1)));
+                int p1Pts = scorePhase(intsToCards(getCards(1,1)));
+                int cribPts = scorePhase(intsToCards(getCards(2,2)));
+                //int p0Pts = 4;
+                //int p1Pts = 8;
+                //int cribPts = 2;
+                int dPos = getDealerPos();
+                if(dPos == 0){
+                    p0Pts+=cribPts;
+                }
+                else{
+                    p1Pts+=cribPts;
+                }
+                vector<xmlrpc_c::value> gameData;
+                gameData.push_back(xmlrpc_c::value_int(p0Pts));
+                gameData.push_back(xmlrpc_c::value_int(p1Pts));
+                updatePlayerPoints(0,p0Pts);
+                updatePlayerPoints(1,p1Pts);
+                fprintf(stdout, "********INFO IN GAMEDATA %d ; %d ************ \n", p0Pts, p1Pts);
+                xmlrpc_c::value_array RAY(gameData);
+                *returnP = RAY;
+            }
+};
+
 class phaseIIturn : public xmlrpc_c::method {
     public:
         phaseIIturn(){}
@@ -1062,7 +1190,7 @@ class prepPII : public xmlrpc_c::method {
                 writeCards(0,1,getCards(0,0)); //write score hand
                 writeCards(1,1,AICards);
                 updatePhase(2);
-                *returnP = xmlrpc_c::value_int(-1);
+                *returnP = xmlrpc_c::value_int(getCutCard());
             }
 };
 
@@ -1104,6 +1232,9 @@ class phaseI : public xmlrpc_c::method {
                 //should technically do this in prepPII, but worried about deck; maybe have to write getCut
                 cutCardNum = cardToInt(deck->cutDeck());
                 updateCut(cutCardNum);
+                writeCard(0,1, cutCardNum);
+                writeCard(1,1, cutCardNum);
+                writeCard(2,2, cutCardNum);
                 dPos = getDealerPos();
                 if(cutCardNum % 13 == 11) {
                     updatePlayerPoints(dPos, 2);
@@ -1163,9 +1294,7 @@ class getPlayerInfo : public xmlrpc_c::method {
                     xmlrpc_c::value* returnP) {
                 int const pID(paramList.getInt(0));
                 vector<int> playerInfo;
-                //playerInfo = getPlayer(pID);
                 playerInfo = getPlayer(pID);
-                fprintf(stdout, "it returned a vector at least? %d", playerInfo.back());
                 vector<xmlrpc_c::value> gameData;
                 gameData.push_back(xmlrpc_c::value_int(playerInfo.at(0)));
                 gameData.push_back(xmlrpc_c::value_int(playerInfo.at(1)));
@@ -1244,6 +1373,12 @@ main(int           const,
         myRegistry.addMethod("AITurn", AITurnP);
         xmlrpc_c::methodPtr const phaseIITurnP(new phaseIIturn);
         myRegistry.addMethod("phaseIITurn", phaseIITurnP);
+        xmlrpc_c::methodPtr const phaseIIIP(new phaseIII);
+        myRegistry.addMethod("phaseIII", phaseIIIP);
+        xmlrpc_c::methodPtr const prepPIIIP(new prepPIII);
+        myRegistry.addMethod("prepPIII", prepPIIIP);
+        xmlrpc_c::methodPtr const nextRoundP(new nextRound);
+        myRegistry.addMethod("nextRound", nextRoundP);
 
         xmlrpc_c::serverAbyss myAbyssServer(
                 xmlrpc_c::serverAbyss::constrOpt()
