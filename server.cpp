@@ -1054,11 +1054,13 @@ class prepPII : public xmlrpc_c::method {
                 //discard AI Cards
                 vector<int> AICards = getCards(1,0);
                 removeCard(1,0, AICards.back());
+                writeCard(2,2, AICards.back()); //add to crib
                 AICards.pop_back();
                 removeCard(1,0, AICards.back());
+                writeCard(2,2, AICards.back()); //add to crib
                 AICards.pop_back();
-                writeCards(0,1,getCards(0,0));
-                writeCards(1,1,getCards(1,0));
+                writeCards(0,1,getCards(0,0)); //write score hand
+                writeCards(1,1,AICards);
                 updatePhase(2);
                 *returnP = xmlrpc_c::value_int(-1);
             }
