@@ -21,18 +21,14 @@ ShowCribbage::ShowCribbage(){
     humanY = 30;
     AIlpy = 10;
     hlpy = 25;
-    yMsg= 19;
+    yMsg= 17;
     cribx = xStart + 3*inc;
     scoreCribx = 40;
     xlp = 30;
-    //anything else?
 }
-//If time, rewrite into 3 functions
 void ShowCribbage::drawPII(Player* players[], Card* cutCard, int phase, int goPhaseNumber, bool isCrib, int dealerPos){
-    /*Code below is always displayed, irrespective of phase */
     key = gameDisplay.captureInput();
-    //NEED TO USE GET COLS AND GET WIDTH TO DRAW BOX. ALSO INCLUDE RESCALE FUNCTIONALITY
-    gameDisplay.drawBox(0,0,88,44,A_BOLD); //SHOULD USE GETWIDTH AND HEIGHT FOR DIMENSIONS OF BOX
+    gameDisplay.drawBox(0,0,88,44,A_BOLD);
     if(phase ==1){
         messageStringBottom.str("");
         messageStringBottom << players[0]->name << ": " << players[0]->getPoints();
@@ -91,16 +87,6 @@ void ShowCribbage::drawPIII(Player* players[], vector<Card*> crib, int hpoints, 
         xStart+= inc;
     }xStart = 20;
 }
-/* Used to print hands on screen to test content of hands */
-void ShowCribbage::testCards(vector<Card*> hand){
-    key = gameDisplay.captureInput();
-    for(;;){
-        for(int k = 0; k < hand.size(); k++){
-            gameDisplay.displayCard(xStart, yMsg, hand.at(k)->getSuit(), hand.at(k)->getPriority(), A_BOLD); //show facedown card as deck; draw another card over it if cutCard has been cut
-            xStart += inc;
-        }xStart = 20;
-    }
-}
 
 int ShowCribbage::getCard(Player* p, int phase, int goPhaseNumber){
     int rtrnNum;
@@ -115,9 +101,7 @@ int ShowCribbage::getCard(Player* p, int phase, int goPhaseNumber){
             if(mouseX >= xStart + 3*inc && mouseX <=xStart + 3*inc + 5 && mouseY >= humanY && mouseY <= humanY + 4) {rtrnNum = 3;}
             if(mouseX >= xStart + 4*inc && mouseX <=xStart + 4*inc + 5 && mouseY >= humanY && mouseY <= humanY + 4) {rtrnNum = 4;}
             if(mouseX >= xStart + 5*inc && mouseX <=xStart + 5*inc + 5 && mouseY >= humanY && mouseY <= humanY + 4) {rtrnNum = 5;}
-            //need to finagle go card
             if(mouseX >= xStart + 10 && mouseX <=xStart + 15 && mouseY >= humanY && mouseY <= humanY + 8) {rtrnNum = -1;} //if they played leftmost card
-            //check if valid card to play:
             if(rtrnNum < p->hand.size()){ //make sure valid card selection
                 if(phase == 1){
                     return rtrnNum;
@@ -148,8 +132,8 @@ void ShowCribbage::displayWinner(Player* players[], int winPos){
         messageStringTop.str("");
         messageStringTop << players[winPos]->name << " wins this game with a score of: " << players[winPos]->getPoints() << " beating " <<players[(1+winPos) % 2]->name << " with " << players[(1+winPos) %2]->getPoints();
         gameDisplay.bannerTop(messageStringTop.str());
+        messageStringBottom.str("");
+        gameDisplay.bannerBottom(messageStringBottom.str());
         if(key == -1) {break;}
     }
 }
-
-
