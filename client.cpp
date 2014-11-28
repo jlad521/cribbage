@@ -523,6 +523,8 @@ int main(int argc, char* argv[]){
     delete players[0];
     delete players[1];
     delete display;
+    delete cut;
+    delete blank;
     return 0;
 }
 
