@@ -15,7 +15,7 @@ public:
     ShowCribbage();
     void drawPII(Player* p[], Card*, int, int, bool, int, bool, int, int);
     void drawPIII(Player* p[], vector<Card*>, int, int);
-    int getCard(Player*, int phase, int goPhaseNum); //ultimately getCard
+    int getCard(Player*, int phase, int goPhaseNum, int); //ultimately getCard
     void spinWait();
     void displayWinner(Player* p[], int);
     void testCards(vector<Card*>);

@@ -908,7 +908,7 @@ void writeCards(int pIndex, int context, vector<int> cards){
     const char* sql;
     const char* data = "Callback function called";
     string currentCard;
-    char buffer[20];
+    char buffer[50];
     for(int i = 0; i<cards.size(); i++){
         sprintf(buffer, "%i, %i, %i );", pIndex, context, cards.at(i));
         currentCard = "INSERT INTO HANDS(pIndex, context, cardID) " \
@@ -927,6 +927,44 @@ void writeCards(int pIndex, int context, vector<int> cards){
     }
     sqlite3_close(db);
 }
+
+int getLP(int pIndex){
+    sqlite3* db;
+    rc = sqlite3_open("test.db", &db);
+    if( rc ){ // opens DB
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        exit(0);
+    }else{
+        fprintf(stderr, "Opened database successfully\n");
+    }
+    int lastCard;
+    sqlite3_stmt *stmt;
+    const char* sql;
+    const char* data = "Callback function called";
+    char buffer[20];
+    sprintf(buffer, "%i;", pIndex);
+    string sqlQuery = "SELECT lastPlayed FROM PLAYERS WHERE playerID = ";
+    sqlQuery.append(buffer);
+    sql =  sqlQuery.c_str();
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if( rc != SQLITE_OK){
+        fprintf(stderr, "SELECT FAILED:%s\n ", sqlite3_errmsg(db));
+    }
+    while(sqlite3_step(stmt) == SQLITE_ROW){
+        lastCard = sqlite3_column_int(stmt,0);
+        fprintf(stdout, "LASTPLAYED CARD************** A**$## : %d\n", lastCard);
+    }
+    sqlite3_finalize(stmt);
+    if( rc != SQLITE_OK ){
+        fprintf(stderr, "SQL error: %s\n", zErrMsg);
+        sqlite3_free(zErrMsg);
+    }else{
+        fprintf(stdout, "Operation done successfully\n");
+    }
+    sqlite3_close(db);
+    return lastCard;
+}
+
 
 int getPTurn(){
     sqlite3* db;
@@ -1202,9 +1240,9 @@ class phaseIII : public xmlrpc_c::method {
                 gameData.push_back(xmlrpc_c::value_int(p1Pts));
                 gameData.push_back(xmlrpc_c::value_int(hasScored));
                 if(hasScored == 0){
-                updatePlayerPoints(0,p0Pts);
-                updatePlayerPoints(1,p1Pts);
-                updateScoreBool(1);
+                    updatePlayerPoints(0,p0Pts);
+                    updatePlayerPoints(1,p1Pts);
+                    updateScoreBool(1);
                 }
                 xmlrpc_c::value_array RAY(gameData);
                 *returnP = RAY;
@@ -1243,7 +1281,7 @@ class phaseIIturn : public xmlrpc_c::method {
                 if(!lastPlayed && !played){
                     updatePlayerPoints(pIndex, 1);
                     updateGoNum(0);
-                    removeCards(3,3); //delete roundCards;
+                    removeCards(3,3); //deletemyID roundCards;
                 }
                 updatePTurn((pIndex +1)%2);
                 *returnP = xmlrpc_c::value_int(-1);
@@ -1256,6 +1294,7 @@ class prepPII : public xmlrpc_c::method {
         void
             execute(xmlrpc_c::paramList const& paramList,
                     xmlrpc_c::value* returnP) {
+                int const myID(paramList.getInt(0));
                 /*
                 //discard AI Cards
                 vector<int> AICards = getCards(1,0);
@@ -1265,9 +1304,9 @@ class prepPII : public xmlrpc_c::method {
                 removeCard(1,0, AICards.back());
                 writeCard(2,2, AICards.back()); //add to crib
                 AICards.pop_back();
-                writeCards(0,1,getCards(0,0)); //write score hand
-                writeCards(1,1,AICards);
                 */
+                writeCards(myID,1,getCards(myID,0)); //write score hand
+                //writeCards(1,1,getCards(1,0));
                 updatePhase(2);
                 *returnP = xmlrpc_c::value_int(getCutCard());
             }
@@ -1347,6 +1386,7 @@ class pIIinfo : public xmlrpc_c::method {
                     xmlrpc_c::value* returnP) {
                 int const myID(paramList.getInt(0));
                 int otherID = (myID +1) % 2;
+                int LP = getLP(otherID);
                 vector<int>oppCards;
                 oppCards = getCards(otherID, 0);
                 vector<xmlrpc_c::value> gameData;
@@ -1355,6 +1395,7 @@ class pIIinfo : public xmlrpc_c::method {
                 gameData.push_back(xmlrpc_c::value_int(getPlayerPoints(0)));
                 gameData.push_back(xmlrpc_c::value_int(getPlayerPoints(1)));
                 gameData.push_back(xmlrpc_c::value_int(oppCards.size()));
+                gameData.push_back(xmlrpc_c::value_int(LP));
                 xmlrpc_c::value_array RAY(gameData);
                 *returnP = RAY;
             }

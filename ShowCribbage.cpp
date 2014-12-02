@@ -41,6 +41,7 @@ void ShowCribbage::drawPII(Player* players[], Card* cutCard, int phase, int goPh
     }
     /*Display unique set for discard and gophase */
     if(phase == 1 || phase == 2){
+        if(myID == 0){
         for(int i = 0; i < players[myID]->hand.size(); i++){
             gameDisplay.displayCard(xStart, humanY, players[myID]->hand.at(i)->getSuit(), players[myID]->hand.at(i)->getPriority(), A_BOLD); //show facedown card as deck; draw another card over it if cutCard has been cut
             xStart += inc;
@@ -49,6 +50,17 @@ void ShowCribbage::drawPII(Player* players[], Card* cutCard, int phase, int goPh
             gameDisplay.displayCard(xStart, AIY, -1, -1, A_BOLD); //show facedown card as deck; draw another card over it if cutCard has been cut
             xStart += inc;
         }xStart = 20;
+        }
+        if(myID == 1){
+        for(int i = 0; i < players[myID]->hand.size(); i++){
+            gameDisplay.displayCard(xStart, AIY, players[myID]->hand.at(i)->getSuit(), players[myID]->hand.at(i)->getPriority(), A_BOLD); //show facedown card as deck; draw another card over it if cutCard has been cut
+            xStart += inc;
+        }xStart = 20;
+        for(int k = 0; k < oppCardNum; k++){
+            gameDisplay.displayCard(xStart, humanY, -1, -1, A_BOLD); //show facedown card as deck; draw another card over it if cutCard has been cut
+            xStart += inc;
+        }xStart = 20;
+        }
         //Now display deck / cutcard:
         gameDisplay.displayCard(xStart, yMsg, cutCard->getSuit(), cutCard->getPriority(), A_BOLD);
         if(isCrib){ gameDisplay.displayCard(cribx, yMsg, -1, -1 , A_BOLD);}
@@ -97,32 +109,39 @@ void ShowCribbage::drawPIII(Player* players[], vector<Card*> crib, int hpoints, 
     }xStart = 20;
 }
 
-int ShowCribbage::getCard(Player* p, int phase, int goPhaseNumber){
+int ShowCribbage::getCard(Player* p, int phase, int goPhaseNumber, int myID){
     int rtrnNum;
     for(;;){
         key = gameDisplay.captureInput();
         if( key == -1 ){
             mouseX = gameDisplay.getMouseEventX();
             mouseY = gameDisplay.getMouseEventY();
-            if(mouseX >= xStart && mouseX <=xStart + 5 && mouseY >= humanY && mouseY <= humanY + 4) {rtrnNum = 0;}
-            if(mouseX >= xStart + inc && mouseX <=xStart + inc + 5 && mouseY >= humanY && mouseY <= humanY + 4) {rtrnNum = 1;}
-            if(mouseX >= xStart + 2*inc && mouseX <=xStart + 2*inc + 5 && mouseY >= humanY && mouseY <= humanY + 4) {rtrnNum = 2;}
-            if(mouseX >= xStart + 3*inc && mouseX <=xStart + 3*inc + 5 && mouseY >= humanY && mouseY <= humanY + 4) {rtrnNum = 3;}
-            if(mouseX >= xStart + 4*inc && mouseX <=xStart + 4*inc + 5 && mouseY >= humanY && mouseY <= humanY + 4) {rtrnNum = 4;}
-            if(mouseX >= xStart + 5*inc && mouseX <=xStart + 5*inc + 5 && mouseY >= humanY && mouseY <= humanY + 4) {rtrnNum = 5;}
-            if(mouseX >= xStart + 10 && mouseX <=xStart + 15 && mouseY >= humanY && mouseY <= humanY + 8) {rtrnNum = -1;} //if they played leftmost card
+            if(myID == 0){
+                if(mouseX >= xStart && mouseX <=xStart + 5 && mouseY >= humanY && mouseY <= humanY + 4) {rtrnNum = 0;}
+                if(mouseX >= xStart + inc && mouseX <=xStart + inc + 5 && mouseY >= humanY && mouseY <= humanY + 4) {rtrnNum = 1;}
+                if(mouseX >= xStart + 2*inc && mouseX <=xStart + 2*inc + 5 && mouseY >= humanY && mouseY <= humanY + 4) {rtrnNum = 2;}
+                if(mouseX >= xStart + 3*inc && mouseX <=xStart + 3*inc + 5 && mouseY >= humanY && mouseY <= humanY + 4) {rtrnNum = 3;}
+                if(mouseX >= xStart + 4*inc && mouseX <=xStart + 4*inc + 5 && mouseY >= humanY && mouseY <= humanY + 4) {rtrnNum = 4;}
+                if(mouseX >= xStart + 5*inc && mouseX <=xStart + 5*inc + 5 && mouseY >= humanY && mouseY <= humanY + 4) {rtrnNum = 5;}
+                //if(mouseX >= xStart + 10 && mouseX <=xStart + 15 && mouseY >= humanY && mouseY <= humanY + 8) {rtrnNum = -1;} //if they played leftmost card
+            }
+            if(myID == 1){
+                if(mouseX >= xStart && mouseX <=xStart + 5 && mouseY >= AIY && mouseY <= AIY + 4) {rtrnNum = 0;}
+                if(mouseX >= xStart + inc && mouseX <=xStart + inc + 5 && mouseY >= AIY && mouseY <= AIY + 4) {rtrnNum = 1;}
+                if(mouseX >= xStart + 2*inc && mouseX <=xStart + 2*inc + 5 && mouseY >= AIY && mouseY <= AIY + 4) {rtrnNum = 2;}
+                if(mouseX >= xStart + 3*inc && mouseX <=xStart + 3*inc + 5 && mouseY >= AIY && mouseY <= AIY + 4) {rtrnNum = 3;}
+                if(mouseX >= xStart + 4*inc && mouseX <=xStart + 4*inc + 5 && mouseY >= AIY && mouseY <= AIY + 4) {rtrnNum = 4;}
+                if(mouseX >= xStart + 5*inc && mouseX <=xStart + 5*inc + 5 && mouseY >= AIY && mouseY <= AIY + 4) {rtrnNum = 5;}
+                //if(mouseX >= xStart + 10 && mouseX <=xStart + 15 && mouseY >= AIY && mouseY <= AIY + 8) {rtrnNum = -1;} //if they played leftmost card
+            }
             if(rtrnNum < p->hand.size()){ //make sure valid card selection
-                if(phase == 1){
-                    return rtrnNum;
-                }
+                if(phase == 1) {return rtrnNum;}
                 if(phase == 2){
                     if(p->hand.at(rtrnNum)->getValue() + goPhaseNumber <= 31) {return rtrnNum;}
                 }
             }
         }
-        else if (key > 0){
-            return -1;
-        }
+        else if (key > 0) {return -1;}
     }
 }
 
