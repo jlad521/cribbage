@@ -21,8 +21,8 @@ Player::Player(int pos, int pts, bool isHuman, Card* lp){ /*vector<Card* Hand, s
     position = pos;
     points = pts;
     isHuman = isHuman;
-    if(pos == 0) { name = "Jesus";}
-    if(pos == 1) { name = "ROBOT";}
+    if(pos == 0) { name = "Player 0";}
+    if(pos == 1) { name = "Player 1";}
     lastCard = lp;
 }
 

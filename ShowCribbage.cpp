@@ -26,10 +26,12 @@ ShowCribbage::ShowCribbage(){
     scoreCribx = 40;
     xlp = 30;
 }
-void ShowCribbage::drawPII(Player* players[], Card* cutCard, int phase, int goPhaseNumber, bool isCrib, int dealerPos){
+
+void ShowCribbage::drawPII(Player* players[], Card* cutCard, int phase, int goPhaseNumber, bool isCrib, int dealerPos, bool myTurn, int myID, int oppCardNum){
+    int otherID = (myID + 1) %  2;
     key = gameDisplay.captureInput();
     gameDisplay.drawBox(0,0,88,44,A_BOLD);
-    if(phase ==1){
+    if(phase == 1){
         messageStringBottom.str("");
         messageStringBottom << players[0]->name << ": " << players[0]->getPoints();
         gameDisplay.bannerBottom(messageStringBottom.str());
@@ -39,11 +41,11 @@ void ShowCribbage::drawPII(Player* players[], Card* cutCard, int phase, int goPh
     }
     /*Display unique set for discard and gophase */
     if(phase == 1 || phase == 2){
-        for(int i = 0; i < players[0]->hand.size(); i++){
-            gameDisplay.displayCard(xStart, humanY, players[0]->hand.at(i)->getSuit(), players[0]->hand.at(i)->getPriority(), A_BOLD); //show facedown card as deck; draw another card over it if cutCard has been cut
+        for(int i = 0; i < players[myID]->hand.size(); i++){
+            gameDisplay.displayCard(xStart, humanY, players[myID]->hand.at(i)->getSuit(), players[myID]->hand.at(i)->getPriority(), A_BOLD); //show facedown card as deck; draw another card over it if cutCard has been cut
             xStart += inc;
         }xStart = 20;
-        for(int k = 0; k < players[1]->hand.size(); k++){
+        for(int k = 0; k < oppCardNum; k++){
             gameDisplay.displayCard(xStart, AIY, -1, -1, A_BOLD); //show facedown card as deck; draw another card over it if cutCard has been cut
             xStart += inc;
         }xStart = 20;
@@ -53,11 +55,18 @@ void ShowCribbage::drawPII(Player* players[], Card* cutCard, int phase, int goPh
     }
     if(phase == 2){
         messageStringTop.str("");
-        messageStringTop << players[1]->name << ": " << players[1]->getPoints() << "                   goPhaseNumber: " << goPhaseNumber << "        Press any key for go";
+        messageStringTop << players[1]->name << ": " << players[1]->getPoints() << "                          Go Phase Number: " << goPhaseNumber;
         gameDisplay.bannerTop(messageStringTop.str());
-        messageStringBottom.str("");
-        messageStringBottom << players[0]->name << ": " << players[0]->getPoints();
-        gameDisplay.bannerBottom(messageStringBottom.str());
+        if(!myTurn){
+            messageStringBottom.str("");
+            messageStringBottom << players[0]->name << ": " << players[0]->getPoints() << "                   Other player thinking!";
+            gameDisplay.bannerBottom(messageStringBottom.str());
+        }
+        else{
+            messageStringBottom.str("");
+            messageStringBottom << players[0]->name << ": " << players[0]->getPoints();
+            gameDisplay.bannerBottom(messageStringBottom.str());
+        }
         gameDisplay.displayCard(xlp,hlpy, players[0]->lastCard->getSuit(), players[0]->lastCard->getPriority(), A_BOLD);
         gameDisplay.displayCard(xlp,AIlpy, players[1]->lastCard->getSuit(), players[1]->lastCard->getPriority(), A_BOLD);
     }

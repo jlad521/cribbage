@@ -35,7 +35,7 @@ class clientConnection{
         void nextRound();
         void phaseIITurn(int, int);
         int AITurn();
-        vector<int> pIIinfo();
+        vector<int> pIIinfo(int);
         static clientConnection* createInstance();
         ~clientConnection() { instanceFlag = false;}
 };
@@ -181,20 +181,21 @@ int clientConnection::AITurn(){
     }
     return index;
 }
-vector<int> clientConnection::pIIinfo(){
+vector<int> clientConnection::pIIinfo(int myID){
     vector<int> inf;
     try{
         xmlrpc_c::clientSimple myClient;// = new(xmlrpc_c::clientSimple);
         xmlrpc_c::value number;
         string const serverUrl("http://localhost:8080/RPC2");
         string const pIIinfo("pIIinfo");
-        myClient.call(serverUrl, pIIinfo, &number);
+        myClient.call(serverUrl, pIIinfo, "i", &number, myID);
         xmlrpc_c::value_array arrr(number);
         vector<xmlrpc_c::value> const gameInfo(arrr.vectorValueValue());
         inf.push_back(xmlrpc_c::value_int(gameInfo.at(0)));
         inf.push_back(xmlrpc_c::value_int(gameInfo.at(1)));
         inf.push_back(xmlrpc_c::value_int(gameInfo.at(2)));
         inf.push_back(xmlrpc_c::value_int(gameInfo.at(3)));
+        inf.push_back(xmlrpc_c::value_int(gameInfo.at(4)));
     } catch (exception const& e) {
         cerr << "Client threw error: " << e.what() << endl;
         sleep(6000);
@@ -273,6 +274,7 @@ vector<int> clientConnection::phaseIII(){
     }
     return info;
 }
+
 vector<int> clientConnection::getPlayerInfo(int pID){
     vector<int> info;
     try{
@@ -321,11 +323,12 @@ vector<int> clientConnection::readCards(int pIndex, int context){
     }
     return info;
 }
+
 /**********************************************************************************************/
 
-vector<Card*> crib;
-int dealerPos, pTurn, goPhaseNumber, phase; // I'm sure there'll be more
 clientConnection *myClient;
+vector<Card*> crib;
+int dealerPos, pTurn, goPhaseNumber, phase, myID, opponentID; // I'm sure there'll be more
 Card* cut = new Card();
 Card* blank = new Card();
 Player* players[2];
@@ -362,6 +365,7 @@ vector<Card*> intsToCards(vector<int> hand){
     }
     return convertedHand;
 }
+
 Card* intToCard(int card){
     if(card == 0) {
         Card* c = new Card();
@@ -410,20 +414,22 @@ void phaseIII(ShowCribbage * display){
 
 void phaseII(ShowCribbage * display){
     vector<int> p2info;
-    int aiIndex;
-    int cardNum;
+    int aiIndex, cardNum, oppCardNum;
     vector<int> updatedP2info;
     vector<int> lastUpdate;
     vector<int> update;
-    update = myClient->pIIinfo();
+    update = myClient->pIIinfo(myID);
     goPhaseNumber = update.at(0);
-    display->drawPII(players, cut, 2, goPhaseNumber, true, dealerPos);
+    oppCardNum = update.at(4);
+    display->drawPII(players, cut, 2, goPhaseNumber, true, dealerPos, true, myID, oppCardNum);
     while(!players[0]->hand.empty() || !players[1]->hand.empty()){
-        p2info = myClient->pIIinfo();
+        p2info = myClient->pIIinfo(myID);
         goPhaseNumber = p2info.at(0);
         pTurn = p2info.at(1);
-        if(pTurn == 0){
-            int index = display->getCard(players[0], 2, goPhaseNumber);
+        oppCardNum = p2info.at(4);
+        //if(currentPTurn == myID)
+        if(pTurn == myID){
+            int index = display->getCard(players[pTurn], 2, goPhaseNumber);
             if(index > -1){
                 myClient->phaseIITurn(pTurn, cardToInt(players[pTurn]->hand.at(index)));
                 players[pTurn]->lastCard = players[pTurn]->hand.at(index); //
@@ -431,54 +437,61 @@ void phaseII(ShowCribbage * display){
             }
             if(index == -1){ myClient->phaseIITurn(pTurn, -1);}
         }
-        else{
-            aiIndex = myClient->AITurn();
-            if(aiIndex > -1){
-                myClient->phaseIITurn(pTurn, cardToInt(players[pTurn]->hand.at(aiIndex)));
-                players[pTurn]->lastCard = players[1]->hand.at(aiIndex);
-                players[pTurn]->hand.erase(players[pTurn]->hand.begin()+aiIndex);
-            }
-            if (aiIndex == -1) {myClient->phaseIITurn(pTurn, -1);}
+        else{ //NOT THIS CLIENT'S TURN. SLEEP AND TRY AGAIN SOON
+            //DISPLAY NOT YOUR TURN
+            display->drawPII(players, cut, 2, goPhaseNumber, true, dealerPos, false, myID, oppCardNum);
+            sleep(1);
+            //continue;
+            /*
+               aiIndex = myClient->AITurn();
+               if(aiIndex > -1){
+               myClient->phaseIITurn(pTurn, cardToInt(players[pTurn]->hand.at(aiIndex)));
+               players[pTurn]->lastCard = players[1]->hand.at(aiIndex);
+               players[pTurn]->hand.erase(players[pTurn]->hand.begin()+aiIndex);
+               }
+               if (aiIndex == -1) {myClient->phaseIITurn(pTurn, -1);}
+               */
         }
-        updatedP2info = myClient->pIIinfo();
+        updatedP2info = myClient->pIIinfo(myID);
         players[0]->setPoints(updatedP2info.at(2));
         players[1]->setPoints(updatedP2info.at(3));
-        display->drawPII(players, cut, 2, updatedP2info.at(0), true, dealerPos);
+        oppCardNum = updatedP2info.at(4);
+        display->drawPII(players, cut, 2, updatedP2info.at(0), true, dealerPos, true, myID, oppCardNum);
     }
     myClient->prepPIII();
-    updatedP2info = myClient->pIIinfo();
+    updatedP2info = myClient->pIIinfo(myID);
     players[0]->setPoints(updatedP2info.at(2));
     players[1]->setPoints(updatedP2info.at(3));
-    display->drawPII(players, cut, 2, updatedP2info.at(0), true, dealerPos);
+    display->drawPII(players, cut, 2, updatedP2info.at(0), true, dealerPos, true, myID, oppCardNum);
     phase = 3;
 }
 
 void phaseI(ShowCribbage* display){
     if(players[0]->hand.empty()){
-    myClient->phaseI(); //deals cards to players
-    players[0]->hand = intsToCards(myClient->readCards(0,0));
-    players[1]->hand = intsToCards(myClient->readCards(1,0));
+        myClient->phaseI(); //deals cards to players
+        players[0]->hand = intsToCards(myClient->readCards(0, 0));
+        players[1]->hand = intsToCards(myClient->readCards(1, 0));
     }
-    if(players[0]->hand.size() == 6){
-    display->drawPII(players, cut, 1, 0, false, dealerPos);
+    if(players[0]->hand.size() && players[1]->hand.size() == 6){
+        display->drawPII(players, cut, 1, 0, false, dealerPos, true, myID, 6);
     }
     else{
-    display->drawPII(players, cut, 1, 0, true, dealerPos);
+        display->drawPII(players, cut, 1, 0, true, dealerPos, true, myID, 6);
     }
     int gophase = 0;
     int selected;
-
     /*Discard human cards */
-    while(players[0]->hand.size() > 4){
-        selected = display->getCard(players[0], 1, 0); //getCard only allows a valid card to be played (play game to see)
-        crib.push_back(players[0]->hand.at(selected)); //add discarded cards to crib
-        myClient->tellDiscard(0, 0, cardToInt(players[0]->hand.at(selected)), 1); //add discarded cards to crib);
-        players[0]->hand.erase(players[0]->hand.begin()+selected);
-        display->drawPII(players, cut, 1, 0, true, dealerPos);
+    while(players[myID]->hand.size() > 4){
+        selected = display->getCard(players[myID], 1, 0); //getCard only allows a valid card to be played (play game to see)
+        crib.push_back(players[myID]->hand.at(selected)); //add discarded cards to crib
+        myClient->tellDiscard(myID, 0, cardToInt(players[0]->hand.at(selected)), 1); //add discarded cards to crib);
+        players[myID]->hand.erase(players[myID]->hand.begin()+selected);
+        display->drawPII(players, cut, 1, 0, true, dealerPos, true, myID, 6);
     }
-    players[1]->hand.pop_back(); //remove card from hand
-    players[1]->hand.pop_back(); //remove card from hand
-    display->drawPII(players, cut, 1, 0, false, dealerPos);
+    //players[opponentID]
+    players[opponentID]->hand.pop_back(); //remove card from hand
+    players[opponentID]->hand.pop_back(); //remove card from hand
+    display->drawPII(players, cut, 1, 0, false, dealerPos, true, myID, 4);
     cut = intToCard(myClient->prepPII());
     phase = 2;
 }
@@ -492,22 +505,34 @@ void initializeGame(){
     p1Info = myClient->getPlayerInfo(1);
     bool isHmn = (p0Info.at(1) == 1);
     bool isAHmn = (p1Info.at(1) == 1);
-    Player * human = new Player(0, p0Info.at(0),  isHmn, intToCard(p0Info.at(2)));
-    Player * AI = new Player(1, p1Info.at(0),  isAHmn, intToCard(p1Info.at(2)));
-    players[0] = human;
-    players[1] = AI;
+    Player * p0 = new Player(0, p0Info.at(0), isHmn, intToCard(p0Info.at(2)));
+    Player * p1 = new Player(1, p1Info.at(0), isAHmn, intToCard(p1Info.at(2)));
+    players[0] = p0;
+    players[1] = p1;
     dealerPos = gameInfo.at(0);
     pTurn = gameInfo.at(1);
     phase = gameInfo.at(2);
     goPhaseNumber = gameInfo.at(3);
-    vector<Card*> t;
-    players[0]->scoreHand = t;
+    //WHY WERE THESE HERE?
+    //vector<Card*> t;
+    //players[0]->scoreHand = t;
     players[0]->hand = intsToCards(myClient->readCards(0,0));
     players[1]->hand = intsToCards(myClient->readCards(1,0));
     if(phase == 2){cut = intToCard(myClient->getCutCard());}
 }
 
 int main(int argc, char* argv[]){
+    if (argc != 2) {
+        return 0;
+    } else {
+        myID = atoi(argv[1]);
+        if ((myID != 0) && (myID != 1)) {
+            return myID;
+        }
+    }
+    opponentID = (myID + 1) %2;
+    cout << "This client's playerID: " << myID << endl;
+    cout << "OPPONENT client's playerID: " << opponentID << endl;
     myClient = clientConnection::createInstance();
     initializeGame();
     ShowCribbage * display = new ShowCribbage();
@@ -519,6 +544,13 @@ int main(int argc, char* argv[]){
     int winPos;
     if(players[0]->getPoints() > WINNING){winPos = 0; }
     else { winPos = 1;}
+    //untested
+    if(players[0]->getPoints() > WINNING &&  players[1]->getPoints() > WINNING ){
+        int p1 = players[0]->getPoints();
+        int p2 = players[1]->getPoints();
+        if(p1 > p2) {winPos = 0;}
+        else {winPos = 1;}
+    }
     display->displayWinner(players, winPos);
     delete players[0];
     delete players[1];

@@ -13,7 +13,7 @@ class Card;
 class ShowCribbage: public display {
 public:
     ShowCribbage();
-    void drawPII(Player* p[], Card*, int, int, bool, int);
+    void drawPII(Player* p[], Card*, int, int, bool, int, bool, int, int);
     void drawPIII(Player* p[], vector<Card*>, int, int);
     int getCard(Player*, int phase, int goPhaseNum); //ultimately getCard
     void spinWait();

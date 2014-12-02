@@ -1083,7 +1083,6 @@ vector<int> getGame(){
     }else{
         fprintf(stderr, "Opened database successfully\n");
     }
-    fprintf(stdout, "it's a miracle if i get here");
     vector<int> gameInfo;
     sqlite3_stmt *stmt;
     const char* data = "Callback function called";
@@ -1257,6 +1256,7 @@ class prepPII : public xmlrpc_c::method {
         void
             execute(xmlrpc_c::paramList const& paramList,
                     xmlrpc_c::value* returnP) {
+                /*
                 //discard AI Cards
                 vector<int> AICards = getCards(1,0);
                 removeCard(1,0, AICards.back());
@@ -1267,6 +1267,7 @@ class prepPII : public xmlrpc_c::method {
                 AICards.pop_back();
                 writeCards(0,1,getCards(0,0)); //write score hand
                 writeCards(1,1,AICards);
+                */
                 updatePhase(2);
                 *returnP = xmlrpc_c::value_int(getCutCard());
             }
@@ -1281,7 +1282,7 @@ class tellDiscard : public xmlrpc_c::method {
                 int const pIndex(paramList.getInt(0));
                 int const ctxt(paramList.getInt(1));
                 int const cardNum(paramList.getInt(2));
-                    writeCard(2,2, cardNum); //add to crib
+                writeCard(2,2, cardNum); //add to crib
                 removeCard(pIndex, ctxt, cardNum);
                 *returnP = xmlrpc_c::value_int(5);
             }
@@ -1311,7 +1312,6 @@ class phaseI : public xmlrpc_c::method {
                 delete deck;
                 *returnP = xmlrpc_c::value_int(5);
             }
-
 };
 
 class readCards : public xmlrpc_c::method {
@@ -1345,11 +1345,16 @@ class pIIinfo : public xmlrpc_c::method {
         void
             execute(xmlrpc_c::paramList const& paramList,
                     xmlrpc_c::value* returnP) {
+                int const myID(paramList.getInt(0));
+                int otherID = (myID +1) % 2;
+                vector<int>oppCards;
+                oppCards = getCards(otherID, 0);
                 vector<xmlrpc_c::value> gameData;
                 gameData.push_back(xmlrpc_c::value_int(getGoPhaseNum()));
                 gameData.push_back(xmlrpc_c::value_int(getPTurn()));
                 gameData.push_back(xmlrpc_c::value_int(getPlayerPoints(0)));
                 gameData.push_back(xmlrpc_c::value_int(getPlayerPoints(1)));
+                gameData.push_back(xmlrpc_c::value_int(oppCards.size()));
                 xmlrpc_c::value_array RAY(gameData);
                 *returnP = RAY;
             }

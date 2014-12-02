@@ -41,6 +41,6 @@
     INSERT INTO GAME (ID, dealerPos, pTurn, phase, goNumber, cutCard, scoreHand, p0, p1, crib) 
     VALUES (NULL, 0, 1, 1, 0, 0, 0, 0,  1, 2);
     INSERT INTO PLAYERS (playerID, points, isHuman, name, lastPlayed, hand, scoreHand)
-    VALUES (0, 0, 1, 'Jesus', 0, 0, 1);
+    VALUES (0, 0, 1, 'Player 0', 0, 0, 1);
     INSERT INTO PLAYERS (playerID, points, isHuman, name, lastPlayed, hand, scoreHand)
-    VALUES (1, 0, 0, 'ROBOT', 0, 0, 1);
+    VALUES (1, 0, 1, 'Player 1', 0, 0, 1);
