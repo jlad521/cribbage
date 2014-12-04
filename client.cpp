@@ -415,24 +415,25 @@ void phaseIII(ShowCribbage * display){
 }
 
 void phaseII(ShowCribbage * display){
-    vector<int> p2info;
     int aiIndex, cardNum, oppCardNum;
-    vector<int> updatedP2info;
     vector<int> lastUpdate;
-    vector<int> update;
-    update = myClient->pIIinfo(myID);
-    goPhaseNumber = update.at(0);
-    //oppCardNum = update.at(4);
-    players[opponentID]->lastCard = intToCard(update.at(5));
-    display->drawPII(players, cut, 2, goPhaseNumber, true, dealerPos, true, myID, 4);
+    vector<int> p2info;
+    vector<int> firstUpdate;
+    firstUpdate = myClient->pIIinfo(myID);
+    goPhaseNumber = firstUpdate.at(0);
+    pTurn = firstUpdate.at(1);
+    oppCardNum = firstUpdate.at(4);
+    players[opponentID]->lastCard = intToCard(firstUpdate.at(5));
+    display->drawPII(players, cut, 2, goPhaseNumber, true, dealerPos, true, myID, oppCardNum);
     while(!players[myID]->hand.empty() || oppCardNum > 0 ){
-        p2info = myClient->pIIinfo(myID);
-        goPhaseNumber = p2info.at(0);
-        pTurn = p2info.at(1);
-        oppCardNum = p2info.at(4);
-        players[opponentID]->lastCard = intToCard(p2info.at(5));
-        display->drawPII(players, cut, 2, goPhaseNumber, true, dealerPos, true, myID, oppCardNum);
-        //if(currentPTurn == myID)
+        /*
+           p2info = myClient->pIIinfo(myID);
+           goPhaseNumber = p2info.at(0);
+           pTurn = p2info.at(1);
+           oppCardNum = p2info.at(4);
+           players[opponentID]->lastCard = intToCard(p2info.at(5));
+           display->drawPII(players, cut, 2, goPhaseNumber, true, dealerPos, true, myID, oppCardNum);
+           */
         if(pTurn == myID){
             int index = display->getCard(players[pTurn], 2, goPhaseNumber, myID);
             if(index > -1){
@@ -443,32 +444,24 @@ void phaseII(ShowCribbage * display){
             if(index == -1){ myClient->phaseIITurn(pTurn, -1);}
         }
         else{ //NOT THIS CLIENT'S TURN. SLEEP AND TRY AGAIN SOON
-            //DISPLAY NOT YOUR TURN
             display->drawPII(players, cut, 2, goPhaseNumber, true, dealerPos, false, myID, oppCardNum);
-            sleep(2);
+            sleep(1);
             //continue;
-            /*
-               aiIndex = myClient->AITurn();
-               if(aiIndex > -1){
-               myClient->phaseIITurn(pTurn, cardToInt(players[pTurn]->hand.at(aiIndex)));
-               players[pTurn]->lastCard = players[1]->hand.at(aiIndex);
-               players[pTurn]->hand.erase(players[pTurn]->hand.begin()+aiIndex);
-               }
-               if (aiIndex == -1) {myClient->phaseIITurn(pTurn, -1);}
-               */
         }
-        updatedP2info = myClient->pIIinfo(myID);
-        players[0]->setPoints(updatedP2info.at(2));
-        players[1]->setPoints(updatedP2info.at(3));
-        oppCardNum = updatedP2info.at(4);
-        players[opponentID]->lastCard = intToCard(updatedP2info.at(5));
-        display->drawPII(players, cut, 2, updatedP2info.at(0), true, dealerPos, true, myID, oppCardNum);
+        p2info = myClient->pIIinfo(myID);
+        goPhaseNumber = p2info.at(0);
+        pTurn = p2info.at(1);
+        players[0]->setPoints(p2info.at(2));
+        players[1]->setPoints(p2info.at(3));
+        oppCardNum = p2info.at(4);
+        players[opponentID]->lastCard = intToCard(p2info.at(5));
+        display->drawPII(players, cut, 2, goPhaseNumber, true, dealerPos, true, myID, oppCardNum);
     }
     if(myID == 0){myClient->prepPIII();}
-    updatedP2info = myClient->pIIinfo(myID);
-    players[0]->setPoints(updatedP2info.at(2));
-    players[1]->setPoints(updatedP2info.at(3));
-    display->drawPII(players, cut, 2, updatedP2info.at(0), true, dealerPos, true, myID, updatedP2info.at(4));
+    lastUpdate = myClient->pIIinfo(myID);
+    players[0]->setPoints(lastUpdate.at(2));
+    players[1]->setPoints(lastUpdate.at(3));
+    display->drawPII(players, cut, 2, lastUpdate.at(0), true, dealerPos, true, myID, lastUpdate.at(4));
     phase = 3;
 }
 
@@ -494,9 +487,6 @@ void phaseI(ShowCribbage* display){
         players[myID]->hand.erase(players[myID]->hand.begin()+selected);
         display->drawPII(players, cut, 1, 0, true, dealerPos, true, myID, 6);
     }
-    ////players[opponentID]
-    //players[opponentID]->hand.pop_back(); //remove card from hand
-    //players[opponentID]->hand.pop_back(); //remove card from hand
     display->drawPII(players, cut, 1, 0, false, dealerPos, true, myID, 6);
     cut = intToCard(myClient->prepPII(myID));
     phase = 2;
@@ -519,9 +509,6 @@ void initializeGame(){
     pTurn = gameInfo.at(1);
     phase = gameInfo.at(2);
     goPhaseNumber = gameInfo.at(3);
-    //WHY WERE THESE HERE?
-    //vector<Card*> t;
-    //players[0]->scoreHand = t;
     players[0]->hand = intsToCards(myClient->readCards(0,0));
     players[1]->hand = intsToCards(myClient->readCards(1,0));
     if(phase == 2){cut = intToCard(myClient->getCutCard());}

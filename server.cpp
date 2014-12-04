@@ -13,98 +13,9 @@
 #include "Deck.h"
 #include <string.h>
 #include "Player.h"
+#include <pthread.h>
 using namespace std;
 
-/*
-class dbConnection{
-    private:
-        sqlite3 *database;
-        int rc;
-        char *zErrMsg;
-        static bool instanceFlag;
-        static dbConnection* an_instance;
-        sqlite3* openDB();
-        dbConnection();
-
-    public:
-        sqlite3* dbRef();
-        vector<int> getPlayer(int);
-        static dbConnection* createInstance();
-        ~dbConnection() {
-            sqlite3_close(db);
-            fprintf(stdout, "closed connection");
-            instanceFlag = false;
-        }
-};
-
-bool dbConnection::instanceFlag = false;
-dbConnection* dbConnection::an_instance = NULL;
-
-dbConnection* dbConnection::createInstance(){
-    if(!instanceFlag){
-        an_instance = new dbConnection();
-        instanceFlag = true;
-        fprintf(stdout, "hellooooooooooooo");
-        return an_instance;
-    }
-}
-
-dbConnection::dbConnection(){
-    fprintf(stdout, "dbAddress before: %p", database);
-}
-
-sqlite3* dbConnection::dbRef(){
-    fprintf(stdout, "dbAddress after: %p", &database);
-    return database;
-}
-vector<int> dbConnection::getPlayer(int id){
-    fprintf(stdout, "dbAddress : %p", database);
-    vector<int> playerInfo;
-    sqlite3_stmt *stmt;
-    const char* sql;
-    const char* data = "Callback function called";
-    char buffer[20];
-    sprintf(buffer, "%i;", id);
-    string sqlTest = "SELECT points, isHuman, lastPlayed FROM PLAYERS WHERE playerID = ";
-    sqlTest.append(buffer);
-    sql = sqlTest.c_str();
-    rc = sqlite3_prepare_v2(database, sql, -1, &stmt, NULL);
-    if( rc != SQLITE_OK){
-        fprintf(stderr, "SELECT FAILED:%s\n ", sqlite3_errmsg(database));
-    }
-    while(sqlite3_step(stmt) == SQLITE_ROW){
-        playerInfo.push_back(sqlite3_column_int(stmt,0));
-        fprintf(stdout, "pInfo: %d", playerInfo.back());
-        playerInfo.push_back(sqlite3_column_int(stmt,1));
-        fprintf(stdout, "pInfo: %d", playerInfo.back());
-        playerInfo.push_back(sqlite3_column_int(stmt,2));
-        fprintf(stdout, "pInfo: %d", playerInfo.back());
-    }
-    sqlite3_finalize(stmt);
-    if( rc != SQLITE_OK ){
-        fprintf(stderr, "SQL error: %s\n", zErrMsg);
-        sqlite3_free(zErrMsg);
-    }else{
-        fprintf(stdout, "GAME INFO returned scuccesueflly done successfully\n");
-    }
-    return playerInfo;
-}
-   void databaseConnection::writeCard(int pIndex, int context, int cardNum){
-   string currentCard;
-   char buffer[20];
-   sprintf(buffer, "%i, %i, %i );", pIndex, context, cardID);
-   currentCard = "INSERT INTO HANDS(cardID, pIndex, context) " \
-   "VALUES ( ";
-   currentCard.append(buffer);
-   fprintf(stdout, "currentCardQuery: %s\n", currentCard.c_str());
-   sql = currentCard.c_str();
-   rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
-   if ( rc != SQLITE_OK){
-   fprintf(stderr, "SQL error: %s\n", zErrMsg);
-   sqlite3_free(zErrMsg);
-   }
-   }
-   */
 static int callback(void *NotUsed, int argc, char **argv, char **azColName){
     int i;
     for(i=0; i<argc; i++){
@@ -115,14 +26,15 @@ static int callback(void *NotUsed, int argc, char **argv, char **azColName){
 }
 //GLOBAL DECLARATOINS:
 Player* players[2];
-int dealerPos, pTurn;
+int dealerPos, pTurn, rc, hasScored;
 vector<Card*> crib;
 Card* cut;
-//dbConnection* dbConnect;
+pthread_mutex_t myTurn;
+pthread_mutex_t updatePts;
+pthread_mutex_t updateGo;
+
 char *zErrMsg;
-int rc;
 bool played, lastPlayed;
-int hasScored;
 
 vector<int> cardsToInts(vector<Card*> hand){
     vector<int> convertedHand;
@@ -1176,6 +1088,7 @@ class nextRound : public xmlrpc_c::method {
                 updateLP(0,0);
                 updateLP(1,0);
                 updateGoNum(0);
+                updatePTurn(dPos); //make it correct person's turn first
                 updateDealerPos((dPos + 1) %2);
                 updateScoreBool(0);
                 *returnP = xmlrpc_c::value_int(-1);
@@ -1240,9 +1153,11 @@ class phaseIII : public xmlrpc_c::method {
                 gameData.push_back(xmlrpc_c::value_int(p1Pts));
                 gameData.push_back(xmlrpc_c::value_int(hasScored));
                 if(hasScored == 0){
+                    updateScoreBool(1);
+                    pthread_mutex_lock(&updatePts);
                     updatePlayerPoints(0,p0Pts);
                     updatePlayerPoints(1,p1Pts);
-                    updateScoreBool(1);
+                    pthread_mutex_unlock(&updatePts);
                 }
                 xmlrpc_c::value_array RAY(gameData);
                 *returnP = RAY;
@@ -1265,6 +1180,8 @@ class phaseIIturn : public xmlrpc_c::method {
                     Card* justPlayed = intToCard(cardNum);
                     writeCard(3,3, cardNum);
                     removeCard(pIndex,0,cardNum);
+                    pthread_mutex_lock(&updateGo);
+                    pthread_mutex_lock(&updatePts);
                     int goNumber = getGoPhaseNum();
                     roundCards = intsToCards(getCards(3, 3));
                     updateLP(pIndex, cardNum);
@@ -1283,7 +1200,11 @@ class phaseIIturn : public xmlrpc_c::method {
                     updateGoNum(0);
                     removeCards(3,3); //deletemyID roundCards;
                 }
+                pthread_mutex_lock(&myTurn);
                 updatePTurn((pIndex +1)%2);
+                pthread_mutex_unlock(&myTurn);
+                pthread_mutex_unlock(&updatePts);
+                pthread_mutex_unlock(&updateGo);
                 *returnP = xmlrpc_c::value_int(-1);
             }
 };
@@ -1390,12 +1311,18 @@ class pIIinfo : public xmlrpc_c::method {
                 vector<int>oppCards;
                 oppCards = getCards(otherID, 0);
                 vector<xmlrpc_c::value> gameData;
+                pthread_mutex_lock(&updateGo);
+                pthread_mutex_lock(&updatePts);
+                pthread_mutex_lock(&myTurn);
                 gameData.push_back(xmlrpc_c::value_int(getGoPhaseNum()));
                 gameData.push_back(xmlrpc_c::value_int(getPTurn()));
                 gameData.push_back(xmlrpc_c::value_int(getPlayerPoints(0)));
                 gameData.push_back(xmlrpc_c::value_int(getPlayerPoints(1)));
                 gameData.push_back(xmlrpc_c::value_int(oppCards.size()));
                 gameData.push_back(xmlrpc_c::value_int(LP));
+                pthread_mutex_unlock(&updatePts);
+                pthread_mutex_unlock(&myTurn);
+                pthread_mutex_unlock(&updateGo);
                 xmlrpc_c::value_array RAY(gameData);
                 *returnP = RAY;
             }
