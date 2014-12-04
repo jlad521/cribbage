@@ -67,7 +67,7 @@ void ShowCribbage::drawPII(Player* players[], Card* cutCard, int phase, int goPh
     }
     if(phase == 2){
         messageStringTop.str("");
-        messageStringTop << players[1]->name << ": " << players[1]->getPoints() << "                          Go Phase Number: " << goPhaseNumber;
+        messageStringTop << players[1]->name << ": " << players[1]->getPoints() << "                          Go Phase Number: " << goPhaseNumber << "          Press any key for 'Go'";
         gameDisplay.bannerTop(messageStringTop.str());
         if(!myTurn){
             messageStringBottom.str("");

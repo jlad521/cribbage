@@ -426,14 +426,6 @@ void phaseII(ShowCribbage * display){
     players[opponentID]->lastCard = intToCard(firstUpdate.at(5));
     display->drawPII(players, cut, 2, goPhaseNumber, true, dealerPos, true, myID, oppCardNum);
     while(!players[myID]->hand.empty() || oppCardNum > 0 ){
-        /*
-           p2info = myClient->pIIinfo(myID);
-           goPhaseNumber = p2info.at(0);
-           pTurn = p2info.at(1);
-           oppCardNum = p2info.at(4);
-           players[opponentID]->lastCard = intToCard(p2info.at(5));
-           display->drawPII(players, cut, 2, goPhaseNumber, true, dealerPos, true, myID, oppCardNum);
-           */
         if(pTurn == myID){
             int index = display->getCard(players[pTurn], 2, goPhaseNumber, myID);
             if(index > -1){
@@ -446,7 +438,6 @@ void phaseII(ShowCribbage * display){
         else{ //NOT THIS CLIENT'S TURN. SLEEP AND TRY AGAIN SOON
             display->drawPII(players, cut, 2, goPhaseNumber, true, dealerPos, false, myID, oppCardNum);
             sleep(1);
-            //continue;
         }
         p2info = myClient->pIIinfo(myID);
         goPhaseNumber = p2info.at(0);
